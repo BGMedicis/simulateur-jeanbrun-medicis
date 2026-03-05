@@ -793,8 +793,12 @@ except ImportError:
     HAS_PLOTLY = False
 
 
+_chart_counter = [0]   # mutable counter for unique keys
+
 def chart_capital_net(ann_data):
     """Graphique capital net (0 % et +1,5 %) — interactif si plotly dispo."""
+    _chart_counter[0] += 1
+    uid = f"cap_{_chart_counter[0]}"
     xs = [a["an"] for a in ann_data]
     y0 = [a["cap0"] for a in ann_data]
     y15 = [a["cap15"] for a in ann_data]
@@ -814,7 +818,7 @@ def chart_capital_net(ann_data):
             font=dict(family="Poppins,sans-serif", size=10),
             xaxis=dict(tickmode="linear", tick0=1, dtick=2, gridcolor="#f0f0f0", title="Année"),
             yaxis_gridcolor="#f0f0f0", yaxis_title="€")
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=uid)
     else:
         fig, ax = plt.subplots(figsize=(10, 3.2), dpi=100)
         ax.plot(xs, y0, "-o", color=COLORS["blue"], lw=2, ms=3.5, label="0 % (prix stable)")
@@ -826,11 +830,13 @@ def chart_capital_net(ann_data):
         ax.set_xticks(range(1, 26, 2)); ax.set_xlabel("Année"); ax.set_ylabel("€")
         ax.legend(loc="upper left", fontsize=8); ax.grid(axis="y", alpha=.25)
         fig.patch.set_facecolor("white"); ax.set_facecolor("white"); fig.tight_layout()
-        st.pyplot(fig)
+        st.pyplot(fig, key=uid+"_mpl")
 
 
 def chart_amort_pret(amttab_data, mempr_val, ta_val):
     """Graphique amortissement du prêt — stacked bar + CRD."""
+    _chart_counter[0] += 1
+    uid = f"amt_{_chart_counter[0]}"
     xs = list(range(1, len(amttab_data) + 1))
     ints = [r["int"] for r in amttab_data]
     princs = [r["princ"] for r in amttab_data]
@@ -846,7 +852,7 @@ def chart_amort_pret(amttab_data, mempr_val, ta_val):
             legend=dict(orientation="h", y=-.3), plot_bgcolor="white", paper_bgcolor="white",
             font=dict(family="Poppins,sans-serif", size=10),
             xaxis=dict(title="Année", gridcolor="#f0f0f0"), yaxis=dict(title="€/an", gridcolor="#f0f0f0"))
-        st.plotly_chart(fig, use_container_width=True)
+        st.plotly_chart(fig, use_container_width=True, key=uid)
     else:
         fig, ax1 = plt.subplots(figsize=(10, 2.8), dpi=100)
         ax1.bar(xs, ints, color=COLORS["ora"], alpha=.85, label="Intérêts")
@@ -858,7 +864,7 @@ def chart_amort_pret(amttab_data, mempr_val, ta_val):
         h1, l1 = ax1.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
         ax1.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=8)
         ax1.set_xlabel("Année"); fig.patch.set_facecolor("white"); ax1.set_facecolor("white"); fig.tight_layout()
-        st.pyplot(fig)
+        st.pyplot(fig, key=uid+"_mpl")
 
 
 # ══════════════════════════════════════════════════════════════════
