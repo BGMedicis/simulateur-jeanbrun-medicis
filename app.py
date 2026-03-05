@@ -204,35 +204,65 @@ st.markdown("""<style>
 .login-card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(20,65,92,.15);
   padding:2.2rem 2rem;text-align:center;margin-top:4rem}
 
-/* ══════ PRINT A4 PORTRAIT ══════ */
+/* ══════ ALTERNANCE COULEURS TABLEAU (Moteur) ══════ */
+.alt-table{width:100%;border-collapse:collapse;font-size:.75rem}
+.alt-table th{background:var(--dark);color:#fff;padding:.3rem .4rem;text-align:left;position:sticky;top:0;font-size:.68rem}
+.alt-table td{padding:.25rem .4rem;border-bottom:1px solid #eee}
+.alt-table tr:nth-child(even){background:#f7f9fc}
+.alt-table tr:nth-child(odd){background:#ffffff}
+.alt-table tr:hover{background:#e8f0fe}
+
+/* ══════ PRINT A4 PORTRAIT — 1 page par onglet ══════ */
 @media print{
   [data-testid="stSidebar"],
   [data-testid="stToolbar"],
   [data-testid="stDecoration"],
   .stTabs [data-baseweb="tab-list"],
-  button,.stDownloadButton,.no-print
+  button,.stDownloadButton,.no-print,
+  .stExpander
     {display:none!important}
 
-  html,body,.stApp{background:#fff!important;margin:0;padding:0}
+  html,body,.stApp{background:#fff!important;margin:0!important;padding:0!important}
   .main .block-container{padding:0!important;max-width:100%!important;margin:0!important}
-  [data-baseweb="tab-panel"]{display:block!important}
+  [data-baseweb="tab-panel"]{display:block!important;overflow:visible!important}
 
-  .hdr{padding:.5rem 1rem!important;border-radius:4px!important;margin-bottom:.3rem!important}
-  .hdr-logo{font-size:1.2rem!important}
-  .hdr-title{font-size:.85rem!important}
-  .accent{margin-bottom:.4rem!important;height:2px!important}
-  .sec{padding:.25rem .7rem!important;margin:.4rem 0 .3rem!important;font-size:.72rem!important}
-  .kpi{padding:.5rem .7rem!important}
-  .kpi-val{font-size:1rem!important}
-  .cnt{padding:.7rem .8rem!important}
-  .cnt-tbl{font-size:.73rem!important}
-  .cnt-bil{font-size:.7rem!important}
-  .ped{padding:.6rem .8rem!important}
-  .ped-txt{font-size:.72rem!important}
-  .footer{margin-top:.5rem!important;padding:.3rem 0!important;font-size:.62rem!important}
-  @page{size:A4 portrait;margin:.8cm}
-  .hdr,.sec,.kpi,.cnt,.ped
+  /* Force tout sur 1 page A4 */
+  @page{size:A4 portrait;margin:6mm}
+
+  .print-page{
+    page-break-inside:avoid!important;
+    max-height:277mm!important;
+    overflow:hidden!important;
+    transform-origin:top left;
+  }
+
+  /* Réduction compacte */
+  *{font-size:92%!important;line-height:1.35!important}
+  .hdr{padding:.4rem .8rem!important;border-radius:3px!important;margin-bottom:.2rem!important}
+  .hdr-logo{font-size:1rem!important}
+  .hdr-title{font-size:.75rem!important}
+  .accent{margin-bottom:.3rem!important;height:2px!important}
+  .sec{padding:.2rem .6rem!important;margin:.3rem 0 .2rem!important;font-size:.65rem!important}
+  .sec.sm{font-size:.6rem!important;padding:.15rem .5rem!important}
+  .kpi{padding:.35rem .5rem!important}
+  .kpi-val{font-size:.85rem!important}
+  .kpi-lbl{font-size:.55rem!important}
+  .cnt{padding:.5rem .6rem!important}
+  .cnt-tbl{font-size:.65rem!important}
+  .cnt-tbl td{padding:.12rem .15rem!important}
+  .cnt-bil{font-size:.62rem!important;padding:.3rem .4rem!important;line-height:1.5!important}
+  .cnt-tot{padding:.3rem .4rem!important}
+  .ped{padding:.4rem .6rem!important}
+  .ped-txt{font-size:.62rem!important}
+  .footer{margin-top:.3rem!important;padding:.2rem 0!important;font-size:.55rem!important}
+  table{font-size:.65rem!important}
+  td,th{padding:.15rem .25rem!important}
+
+  /* Couleurs préservées */
+  .hdr,.sec,.kpi,.cnt,.ped,.alt-table th,
+  [style*="background"]
     {-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .alt-table tr:nth-child(even){background:#f7f9fc!important;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 </style>""", unsafe_allow_html=True)
 
@@ -1162,284 +1192,248 @@ with t3:
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne non contractuel</div>', unsafe_allow_html=True)
 
 
+
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 4 — REVENTE & PLUS-VALUE (fidèle layout Excel tabulaire)
+# ONGLET 4 — REVENTE & PLUS-VALUE (fidèle Excel : tableau structuré)
 # ─────────────────────────────────────────────────────────────────
 with t4:
     st.markdown('<div class="sec">SIMULATION DE REVENTE — DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
     st.caption("Calcul pédagogique de la plus-value et de votre enrichissement net à la revente")
 
-    cols4 = st.columns(3)
-    for col4, (an_r, lbl, bc, bg, icon) in zip(cols4, [
-        (9,  "🔹 REVENTE À 9 ANS",  "#3761AD", "#EEF2FB", "🔹"),
-        (15, "🔸 REVENTE À 15 ANS", "#009FA3", "#E4F5F5", "🔸"),
-        (25, "⭐ REVENTE À 25 ANS", "#EA653D", "#FEF0EC", "⭐"),
-    ]):
+    def revente_col_html(an_r, lbl, bc, bg, icon):
+        """Génère le HTML d'une colonne Revente fidèle Excel."""
         a = ann[an_r - 1]
-        vb15 = prix * (1.015 ** an_r)
-        # PV calculations for 1.5% scenario
-        pv15 = a["pv15"]; pvi15 = a["pvi15"]; pps15 = a["pps15"]
-        ir_pv15 = pvi15 * TAUX_IR_PV; ps_pv15 = pps15 * TAUX_PS_PV
-        surt15 = max(0., surtaxe(pvi15)); ipv15 = a["ipv15"]
-        cap15 = a["cap15"]
-        # 0% scenario
-        pv0 = a["pv0"]; pvi0 = a["pvi0"]; pps0 = a["pps0"]
-        ir_pv0 = pvi0 * TAUX_IR_PV; ps_pv0 = pps0 * TAUX_PS_PV
-        surt0 = max(0., surtaxe(pvi0)); ipv0 = a["ipv0"]
-        cap0 = a["cap0"]
+        vb0 = prix; vb15 = prix * (1.015 ** an_r)
+        pv0 = a["pv0"]; pv15 = a["pv15"]
+        pvi0 = a["pvi0"]; pps0 = a["pps0"]; pvi15 = a["pvi15"]; pps15 = a["pps15"]
+        ir0 = pvi0 * TAUX_IR_PV; ps0 = pps0 * TAUX_PS_PV
+        ir15 = pvi15 * TAUX_IR_PV; ps15 = pps15 * TAUX_PS_PV
+        s0 = max(0., surtaxe(pvi0)); s15 = max(0., surtaxe(pvi15))
+        ipv0 = a["ipv0"]; ipv15 = a["ipv15"]
+        cap0 = a["cap0"]; cap15 = a["cap15"]
+        cap0c = "#009FA3" if cap0 > 0 else "#EA653D"
+        cap15c = "#009FA3" if cap15 > 0 else "#EA653D"
+        return f"""<div style="flex:1">
+        <div class="sec" style="background:{bc};margin-top:0">{icon} {lbl}</div>
+        <table style="width:100%;border-collapse:collapse;font-size:.78rem">
+          <tr><td colspan="3" style="padding:.4rem .3rem;font-weight:700;color:{bc};border-bottom:2px solid {bc}">PRIX DE VENTE</td></tr>
+          <tr><td style="padding:.25rem .3rem">Prix vente (0%)</td><td style="text-align:right;font-weight:700">{fe(vb0)}</td><td></td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:.25rem .3rem">Prix vente (1,5%/an)</td><td style="text-align:right;font-weight:700">{fe(vb15)}</td><td></td></tr>
+          <tr><td colspan="3" style="padding:.4rem .3rem;font-weight:700;color:{bc};border-bottom:2px solid {bc}">CALCUL DE LA PLUS-VALUE</td></tr>
+          <tr><td style="padding:.2rem .3rem">Prix d'acquisition</td><td style="text-align:right">{fe(prix)}</td><td></td></tr>
+          <tr><td style="padding:.2rem .3rem">+ Forfait frais acq. (7,5%)</td><td style="text-align:right">{fe(a['fac'])}</td><td></td></tr>
+          <tr><td style="padding:.2rem .3rem">+ Forfait travaux 15% (si > 5 ans)</td><td style="text-align:right">{fe(a['ftv'])}</td><td></td></tr>
+          <tr><td style="padding:.2rem .3rem">– Amortissements réintégrés</td><td style="text-align:right">{fe(a['amt_cum'])}</td><td></td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:.25rem .3rem;font-weight:700">= Prix de revient corrigé</td><td style="text-align:right;font-weight:700">{fe(a['pr'])}</td><td></td></tr>
+          <tr><td style="padding:.25rem .3rem">➜ PV brute (0%)</td><td style="text-align:right;font-weight:700;color:{bc}">{fe(pv0)}</td><td></td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:.25rem .3rem">➜ PV brute (1,5%)</td><td style="text-align:right;font-weight:700;color:{bc}">{fe(pv15)}</td><td></td></tr>
+          <tr><td colspan="3" style="padding:.35rem .3rem;font-weight:700;color:{bc};border-bottom:2px solid {bc}">ABATTEMENTS DURÉE DE DÉTENTION</td></tr>
+          <tr><td style="padding:.2rem .3rem">Abattement IR (%)</td><td style="text-align:right">{fp(a['ai'],1)}</td><td></td></tr>
+          <tr><td style="padding:.15rem .3rem;font-size:.72rem">   PV imposable IR</td><td style="text-align:right;font-size:.72rem">(0%) {fe(pvi0)}</td><td style="text-align:right;font-size:.72rem">(1,5%) {fe(pvi15)}</td></tr>
+          <tr><td style="padding:.2rem .3rem">Abattement PS (%)</td><td style="text-align:right">{fp(a['ap'],1)}</td><td></td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:.15rem .3rem;font-size:.72rem">   PV imposable PS</td><td style="text-align:right;font-size:.72rem">(0%) {fe(pps0)}</td><td style="text-align:right;font-size:.72rem">(1,5%) {fe(pps15)}</td></tr>
+          <tr><td colspan="3" style="padding:.35rem .3rem;font-weight:700;color:{bc};border-bottom:2px solid {bc}">IMPÔT SUR LA PLUS-VALUE</td></tr>
+          <tr><td style="padding:.15rem .3rem;font-size:.72rem">IR (19%)</td><td style="text-align:right;font-size:.72rem">(0%) {fe(ir0)}</td><td style="text-align:right;font-size:.72rem">(1,5%) {fe(ir15)}</td></tr>
+          <tr><td style="padding:.15rem .3rem;font-size:.72rem">PS (17,2%)</td><td style="text-align:right;font-size:.72rem">(0%) {fe(ps0)}</td><td style="text-align:right;font-size:.72rem">(1,5%) {fe(ps15)}</td></tr>
+          <tr><td style="padding:.15rem .3rem;font-size:.72rem">Surtaxe</td><td style="text-align:right;font-size:.72rem">(0%) {fe(s0)}</td><td style="text-align:right;font-size:.72rem">(1,5%) {fe(s15)}</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:.25rem .3rem;font-weight:700">= TOTAL IMPÔT PV</td><td style="text-align:right;font-weight:700;color:#EA653D">(0%) {fe(ipv0)}</td><td style="text-align:right;font-weight:700;color:#EA653D">(1,5%) {fe(ipv15)}</td></tr>
+          <tr><td colspan="3" style="padding:.35rem .3rem;font-weight:700;color:{bc};border-bottom:2px solid {bc}">CAPITAL RESTANT DÛ</td></tr>
+          <tr style="border-bottom:1px solid #eee"><td style="padding:.25rem .3rem">CRD à la date de revente</td><td style="text-align:right;font-weight:700" colspan="2">{fe(a['crd'])}</td></tr>
+          <tr><td colspan="3" style="padding:.35rem .3rem;font-weight:700;color:{bc};border-bottom:2px solid {bc}">CAPITAL CONSTITUÉ NET</td></tr>
+          <tr><td style="padding:.25rem .3rem">= Prix vente – CRD – Impôt PV (0%)</td><td style="text-align:right;font-weight:800;color:{cap0c}" colspan="2">{fe(cap0)}</td></tr>
+          <tr><td style="padding:.25rem .3rem">= Prix vente – CRD – Impôt PV (1,5%)</td><td style="text-align:right;font-weight:800;color:{cap15c}" colspan="2">{fe(cap15)}</td></tr>
+        </table></div>"""
 
-        with col4:
-            st.markdown(f'<div class="sec" style="background:{bc}">{lbl}</div>', unsafe_allow_html=True)
+    st.markdown(f"""<div style="display:flex;gap:.8rem">
+    {revente_col_html(9, "REVENTE À 9 ANS", "#3761AD", "#EEF2FB", "🔹")}
+    {revente_col_html(15, "REVENTE À 15 ANS", "#009FA3", "#E4F5F5", "🔸")}
+    {revente_col_html(25, "REVENTE À 25 ANS", "#EA653D", "#FEF0EC", "⭐")}
+    </div>""", unsafe_allow_html=True)
 
-            st.markdown(f"""
-**PRIX DE VENTE**
-
-| | Scénario 0% | Scénario +1,5% |
-|---|---|---|
-| Prix de vente | {fe(prix)} | {fe(vb15)} |
-
-**CALCUL DE LA PLUS-VALUE**
-
-| | Valeur |
-|---|---|
-| Prix d'acquisition | {fe(prix)} |
-| + Forfait frais acq. (7,5%) | +{fe(a['fac'])} |
-| + Forfait travaux 15% (si > 5 ans) | +{fe(a['ftv'])} |
-| – Amortissements réintégrés | –{fe(a['amt_cum'])} |
-| **= Prix de revient corrigé** | **{fe(a['pr'])}** |
-
-| | 0% | +1,5% |
-|---|---|---|
-| ➜ **PV brute** | **{fe(pv0)}** | **{fe(pv15)}** |
-
-**ABATTEMENTS POUR DURÉE DE DÉTENTION**
-
-| | 0% | +1,5% |
-|---|---|---|
-| Abattement IR | {fp(a['ai'],1)} | {fp(a['ai'],1)} |
-| PV imposable IR | {fe(pvi0)} | {fe(pvi15)} |
-| Abattement PS | {fp(a['ap'],1)} | {fp(a['ap'],1)} |
-| PV imposable PS | {fe(pps0)} | {fe(pps15)} |
-
-**IMPÔT SUR LA PLUS-VALUE**
-
-| | 0% | +1,5% |
-|---|---|---|
-| IR (19%) | {fe(ir_pv0)} | {fe(ir_pv15)} |
-| PS (17,2%) | {fe(ps_pv0)} | {fe(ps_pv15)} |
-| Surtaxe | {fe(surt0)} | {fe(surt15)} |
-| **= TOTAL IMPÔT PV** | **{fe(ipv0)}** | **{fe(ipv15)}** |
-
-**CAPITAL RESTANT DÛ** : {fe(a['crd'])}
-
-**CAPITAL CONSTITUÉ NET**
-
-| | Valeur |
-|---|---|
-| **Net (0%)** | **{fe(cap0)}** |
-| **Net (+1,5%)** | **{fe(cap15)}** |
-""")
-
-    # ── Pédagogie (rows 45-49 Excel)
-    st.markdown('<div class="sec blue">💡 COMPRENDRE VOTRE ENRICHISSEMENT</div>', unsafe_allow_html=True)
-    st.markdown("""
-- ▸ Le capital constitué net = ce qui vous reste **en poche** après avoir soldé votre crédit et payé l'impôt sur la plus-value.
-- ▸ Plus vous détenez longtemps, plus les abattements pour durée de détention réduisent l'impôt PV : exonération totale d'IR à **22 ans**, de PS à **30 ans**.
-- ▸ L'amortissement Jeanbrun est réintégré dans la plus-value à la revente, mais l'économie d'impôt réalisée chaque année (déficit foncier) vous a déjà profité.
-- ▸ Le scénario **0%** est conservateur (pas de hausse des prix). Le **+1,5%/an** reflète l'évolution historique moyenne du marché immobilier français.
-""")
+    # ── Pédagogie (fidèle Excel rows 45-49)
+    st.markdown("""<div style="margin-top:.8rem;padding:.7rem .9rem;background:#f9f9f9;border-radius:8px;border-left:4px solid #14415C;font-size:.8rem;line-height:1.7">
+      <b style="color:#14415C">💡 COMPRENDRE VOTRE ENRICHISSEMENT</b><br>
+      ▸ Le capital constitué net = ce qui vous reste en poche après avoir soldé votre crédit et payé l'impôt sur la plus-value.<br>
+      ▸ Plus vous détenez longtemps, plus les abattements pour durée de détention réduisent l'impôt PV : exonération totale d'IR à 22 ans, de PS à 30 ans.<br>
+      ▸ L'amortissement Jeanbrun est réintégré dans la plus-value à la revente, mais l'économie d'impôt réalisée chaque année (déficit foncier) vous a déjà profité.<br>
+      ▸ Le scénario 0% est conservateur (pas de hausse des prix). Le +1,5%/an reflète l'évolution historique moyenne du marché immobilier français.
+    </div>""", unsafe_allow_html=True)
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Simulation personnalisée non contractuelle</div>', unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 5 — MOTEUR (49 colonnes)
+# ONGLET 5 — MOTEUR (alternance couleurs)
 # ─────────────────────────────────────────────────────────────────
 with t5:
-    st.markdown('<div class="sec">⚙️ MOTEUR — Données brutes · 49 colonnes Excel V9</div>', unsafe_allow_html=True)
-    rows5 = []
+    st.markdown('<div class="sec">⚙️ MOTEUR — Données brutes · Colonnes Excel V9</div>', unsafe_allow_html=True)
+
+    # Construire le HTML du tableau avec alternance
+    header_cols = ["An","Loyers","Charges","Intérêts","Assur.","Amt.JB","CRD",
+        "RF aut.","Tot.av.","IR av.","PS av.",
+        "RF bruts","Ch.fin.","Ch.nf","RF net","Déd.RG","Déf.gén","Stock d.","Déf.imp","RF tax.",
+        "Rev.ap.","IR ap.","PS ap.","Éco.","Enrich.",
+        "Eff/m","CF cum","Amt.cum","PV br.","Ab.IR","PV i.IR","Ab.PS","PV i.PS","Imp.PV",
+        "TRI","CSG av","CSG ap","Cap.0%","Cap.1,5%"]
+
+    def fmt(v, d=0):
+        try:
+            return f"{float(v):,.{d}f}".replace(",", "\u202f")
+        except:
+            return str(v) if v is not None else ""
+
+    rows_html = ""
     for a in ann:
-        rows5.append({
-            "An": a["an"], "Loyers": round(a["lo"], 2), "Charges": round(a["ch"], 2),
-            "Intérêts": round(a["int_a"], 2), "Assurance": round(a["ass_a"], 2),
-            "Amort.JB": round(a["amort_yr"], 2), "CRD": round(a["crd"], 2),
-            "RF autres": round(rfa, 0),
-            "Tot.av.": round(a["tot_av"], 2), "TMI av.": fp(a["tmi_avant"]),
-            "IR av.": round(a["ir_av"], 2), "PS av.": round(a["ps_av"], 2),
-            "RF bruts": round(a["rf_b"], 2), "Ch.fin.": round(a["ch_f"], 2),
-            "Ch.non-fin": round(a["ch_nf"], 2), "RF net gl.": round(a["rfn"], 2),
-            "Déd.RG": round(a["ded"], 2), "Déf.gén.": round(a["def_g"], 2),
-            "Stock déf.": round(a["stock_def"], 2), "Déf.imp.": round(a["def_imp"], 2),
-            "RF net tax.": round(a["rfnt"], 2), "Rev.après": round(a["rev_ap"], 2),
-            "TMI ap.": fp(a["tmi_apres"]),
-            "IR ap.": round(a["ir_ap"], 2), "PS ap.": round(a["ps_ap"], 2),
-            "Éco.fisc.": round(a["eco"], 2), "Enrichis.": round(a["enrichissement"], 2),
-            "Eff./mois": round(a["effort"], 2),
-            "CF cum.": round(a["cashflow_cum"], 2),
-            "Amt.cum.": round(a["amt_cum"], 2),
-            "PV brute": round(a["pv0"], 2), "Ab.IR": fp(a["ai"]),
-            "PV imp.IR": round(a["pvi0"], 2), "Ab.PS": fp(a["ap"]),
-            "PV imp.PS": round(a["pps0"], 2), "Imp.PV": round(a["ipv0"], 2),
-            "Déf.pér.": round(a["def_perime"], 2),
-            "TRI": fp(a["tri"]) if a["tri"] is not None else "—",
-            "CSG d.av.": round(a["csg_ded_av"], 2), "CSG d.ap.": round(a["csg_ded_ap"], 2),
-            "Cap.0%": round(a["cap0"], 2), "Cap.+1,5%": round(a["cap15"], 2),
-        })
-    st.dataframe(pd.DataFrame(rows5), hide_index=True, use_container_width=True, height=600)
-    st.markdown("""
-**Colonnes clés :** · *RF net gl.* = RF bruts − Ch.fin − Ch.non-fin · *Déd.RG* = déficit imputable RG (plaf. 10 700 €)  
-· *Stock déf.* = report 10 ans · *TRI* = taux de rentabilité interne si revente · *CSG d.* = CSG déductible 6,8 %
-""")
+        tri_str = fp(a["tri"]) if a["tri"] is not None else "—"
+        vals = [
+            a["an"], fmt(a["lo"],0), fmt(a["ch"],0), fmt(a["int_a"],0), fmt(a["ass_a"],0),
+            fmt(a["amort_yr"],0), fmt(a["crd"],0),
+            fmt(rfa,0), fmt(a["tot_av"],0), fmt(a["ir_av"],0), fmt(a["ps_av"],0),
+            fmt(a["rf_b"],0), fmt(a["ch_f"],0), fmt(a["ch_nf"],0), fmt(a["rfn"],0),
+            fmt(a["ded"],0), fmt(a["def_g"],0), fmt(a["stock_def"],0), fmt(a["def_imp"],0), fmt(a["rfnt"],0),
+            fmt(a["rev_ap"],0), fmt(a["ir_ap"],0), fmt(a["ps_ap"],0), fmt(a["eco"],0), fmt(a["enrichissement"],0),
+            fmt(a["effort"],0), fmt(a["cashflow_cum"],0), fmt(a["amt_cum"],0),
+            fmt(a["pv0"],0), fp(a["ai"]), fmt(a["pvi0"],0), fp(a["ap"]), fmt(a["pps0"],0), fmt(a["ipv0"],0),
+            tri_str, fmt(a["csg_ded_av"],0), fmt(a["csg_ded_ap"],0), fmt(a["cap0"],0), fmt(a["cap15"],0),
+        ]
+        tds = "".join(f"<td>{v}</td>" for v in vals)
+        rows_html += f"<tr>{tds}</tr>\n"
+
+    ths = "".join(f"<th>{h}</th>" for h in header_cols)
+    moteur_html = f"""<div style="overflow-x:auto;max-height:620px;overflow-y:auto">
+    <table class="alt-table"><thead><tr>{ths}</tr></thead><tbody>{rows_html}</tbody></table></div>"""
+    st.markdown(moteur_html, unsafe_allow_html=True)
+
+    st.markdown("""<div style="font-size:.75rem;margin-top:.5rem;color:#888;line-height:1.6">
+    <b>Colonnes clés :</b> RF net = RF bruts − Ch.fin − Ch.nf · Déd.RG = déficit imputable RG (plaf. 10 700 €) ·
+    Stock d. = report 10 ans · TRI = taux de rentabilité interne si revente · CSG = CSG déductible 6,8 %
+    </div>""", unsafe_allow_html=True)
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne</div>', unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 6 — RÈGLES FISCALES (fidèle Excel : 6 sections pédagogiques)
+# ONGLET 6 — RÈGLES FISCALES (copie mot pour mot de l'Excel)
 # ─────────────────────────────────────────────────────────────────
 with t6:
+
+    def rule_block(icon, title, body, formula, ref):
+        """Bloc de règle fiscale fidèle au format Excel."""
+        body_html = body.replace("\n", "<br>")
+        return f"""<div style="display:flex;gap:.7rem;margin:.5rem 0 .8rem;align-items:flex-start">
+          <div style="font-size:1.3rem;min-width:1.8rem;text-align:center">{icon}</div>
+          <div style="flex:1">
+            <div style="font-weight:700;font-size:.85rem;margin-bottom:.3rem;color:#14415C">{title}</div>
+            <div style="font-size:.78rem;line-height:1.65;color:#333">{body_html}</div>
+            <div style="font-size:.75rem;margin-top:.3rem;color:#555"><b>Formule :</b> <code style="background:#f4f4f4;padding:.1rem .3rem;border-radius:3px">{formula}</code></div>
+            <div style="font-size:.72rem;color:#888;margin-top:.15rem">{ref}</div>
+          </div></div>"""
+
     st.markdown('<div class="sec">RÈGLES FISCALES DU SIMULATEUR JEANBRUN</div>', unsafe_allow_html=True)
     st.caption("Synthèse des mécaniques fiscales intégrées au modèle • Document pédagogique")
 
     # ── 1️⃣ IR
     st.markdown('<div class="sec blue">1️⃣ IMPÔT SUR LE REVENU — Barème progressif 2026</div>', unsafe_allow_html=True)
-    st.markdown("""
-**📊 Barème progressif par tranches**
+    st.markdown(rule_block("📊", "Barème progressif par tranches",
+        "L'IR est calculé par application du barème progressif au quotient familial (revenu / nb parts), puis multiplié par le nombre de parts.\nTranches : 0 % → 11 % → 30 % → 41 % → 45 %.",
+        "IR = Rev × Taux_tranche − Réduction × Nb_parts",
+        "📖 Art. 197 du CGI • Barème applicable aux revenus 2025 (déclarés en 2026)"), unsafe_allow_html=True)
+    st.markdown(rule_block("👨‍👩‍👧", "Plafonnement du quotient familial",
+        "L'avantage fiscal procuré par chaque demi-part supplémentaire au-delà de 2 parts est plafonné à 1 759 € par demi-part.\nLe simulateur compare l'IR « avec QF » et l'IR « sur 2 parts plafonné » et retient le plus élevé.",
+        "IR = MAX(IR_QF, IR_1part − (N−1) × Plafond_QF)",
+        "📖 Art. 197-I-2 du CGI • Plafond 2026 : 1 759 €/demi-part"), unsafe_allow_html=True)
+    st.markdown(rule_block("💶", "CSG déductible (en N+1)",
+        "La CSG payée sur les revenus fonciers est partiellement déductible du revenu global de l'année suivante, au taux de 6,8 % de la base soumise aux prélèvements sociaux.\nLe modèle calcule cette déduction tant pour la situation « avant opération » (sur les RF autres) que pour la situation « après opération » (sur le RF net taxable global).",
+        "CSG_déd(N) = RF_net_taxable(N) × 6,8 % → déduite du revenu global en N+1",
+        "📖 Art. 154 quinquies du CGI • Taux : 6,8 % (fraction déductible de la CSG à 9,2 %)"), unsafe_allow_html=True)
 
-L'IR est calculé par application du barème progressif au quotient familial (revenu / nb parts), puis multiplié par le nombre de parts.
-Tranches : 0 % → 11 % → 30 % → 41 % → 45 %.
-
-> *Formule :* `IR = Rev × Taux_tranche − Réduction × Nb_parts`
-> *📖 Art. 197 du CGI • Barème applicable aux revenus 2025 (déclarés en 2026)*
-
-**👨‍👩‍👧 Plafonnement du quotient familial**
-
-L'avantage fiscal procuré par chaque demi-part supplémentaire au-delà de 2 parts est plafonné à **1 759 € par demi-part**. Le simulateur compare l'IR « avec QF » et l'IR « sur 2 parts plafonné » et retient le plus élevé.
-
-> *Formule :* `IR = MAX(IR_QF, IR_2parts − (N−2) × Plafond_QF)`
-> *📖 Art. 197-I-2 du CGI • Plafond 2026 : 1 759 €/demi-part*
-
-**💶 CSG déductible (en N+1)**
-
-La CSG payée sur les revenus fonciers est partiellement déductible du revenu global de l'année suivante, au taux de **6,8 %** de la base soumise aux prélèvements sociaux.
-
-> *Formule :* `CSG_déd(N) = RF_net_taxable(N) × 6,8 % → déduite du revenu global en N+1`
-> *📖 Art. 154 quinquies du CGI*
-""")
-
-    # ── 2️⃣ Revenus fonciers
+    # ── 2️⃣ RF
     st.markdown('<div class="sec teal">2️⃣ REVENUS FONCIERS — Globalisation & déficit (2044)</div>', unsafe_allow_html=True)
-    st.markdown("""
-**🔗 Globalisation obligatoire des revenus fonciers**
+    st.markdown(rule_block("🔗", "Globalisation obligatoire des revenus fonciers",
+        "Le résultat foncier se calcule GLOBALEMENT pour l'ensemble du patrimoine locatif du foyer, et non bien par bien. Le simulateur additionne donc les loyers Jeanbrun ET les RF d'autres biens avant d'imputer les charges financières.\nC'est cette globalisation qui permet aux RF existants d'absorber les intérêts d'emprunt, évitant la constitution de déficits d'intérêts fictifs.",
+        "RF_bruts_globaux = Loyers_Jeanbrun + RF_autres",
+        "📖 Art. 28 à 31 du CGI • Formulaire 2044 ligne 420"), unsafe_allow_html=True)
+    st.markdown(rule_block("⚖️", "Partition charges financières / non-financières",
+        "En cas de déficit foncier global, le traitement diffère selon la nature des charges excédentaires :\n• Si les RF globaux couvrent les charges financières (Q ≥ R) : le déficit provient des charges non-financières → déductible du revenu global (plafond 10 700 €).\n• Si les RF globaux ne couvrent PAS les charges financières (Q < R) : l'excédent d'intérêts est reportable sur les RF futurs (10 ans), les charges non-fin. restent déductibles du RG.",
+        "Déd_RG = MIN(Déficit_charges_non_fin, 10 700)",
+        "📖 Art. 156-I-3° du CGI • BOI-RFPI-BASE-30-20"), unsafe_allow_html=True)
+    st.markdown(rule_block("🔄", "Déficit reportable sur 10 ans",
+        "L'excédent de déficit non imputable sur le revenu global (au-delà de 10 700 €) ainsi que les déficits d'intérêts sont reportables sur les revenus fonciers positifs des 10 années suivantes.\nLe stock est géré année par année avec péremption automatique à 10 ans.",
+        "Stock(N) = Stock(N−1) + Généré(N) − Imputé(N−1) − Périmé(>10 ans)",
+        "📖 Art. 156-I-3° alinéa 4 du CGI"), unsafe_allow_html=True)
+    st.markdown(rule_block("💰", "Prélèvements sociaux sur RF nets",
+        "Les prélèvements sociaux (17,2 %) s'appliquent sur le revenu foncier net taxable positif.\nEn phase de déficit foncier (RF net ≤ 0), les PS sont nuls — y compris sur les RF d'autres biens, car la base est le résultat foncier GLOBAL, pas bien par bien.",
+        "PS = RF_net_taxable × 17,2 % (si positif, sinon 0)",
+        "📖 Art. L. 136-6 du CSS • Taux 2026 : 9,2 % CSG + 0,5 % CRDS + 7,5 % PS"), unsafe_allow_html=True)
 
-Le résultat foncier se calcule GLOBALEMENT pour l'ensemble du patrimoine locatif du foyer, et non bien par bien. Le simulateur additionne donc les loyers Jeanbrun ET les RF d'autres biens avant d'imputer les charges financières.
-
-> *Formule :* `RF_bruts_globaux = Loyers_Jeanbrun + RF_autres`
-> *📖 Art. 28 à 31 du CGI • Formulaire 2044 ligne 420*
-
-**⚖️ Partition charges financières / non-financières**
-
-En cas de déficit foncier global, le traitement diffère selon la nature des charges excédentaires :
-- Si les RF globaux couvrent les charges financières (Q ≥ R) : le déficit provient des charges non-financières → déductible du revenu global (plafond **10 700 €**).
-- Si les RF globaux ne couvrent PAS les charges financières (Q < R) : l'excédent d'intérêts est reportable sur les RF futurs (10 ans), les charges non-fin. restent déductibles du RG.
-
-> *Formule :* `Déd_RG = MIN(Déficit_charges_non_fin, 10 700)`
-> *📖 Art. 156-I-3° du CGI • BOI-RFPI-BASE-30-20*
-
-**🔄 Déficit reportable sur 10 ans**
-
-L'excédent de déficit non imputable sur le revenu global ainsi que les déficits d'intérêts sont reportables sur les revenus fonciers positifs des **10 années suivantes**. Le stock est géré année par année avec péremption automatique à 10 ans.
-
-> *Formule :* `Stock(N) = Stock(N−1) + Généré(N) − Imputé(N−1) − Périmé(>10 ans)`
-> *📖 Art. 156-I-3° alinéa 4 du CGI*
-
-**💰 Prélèvements sociaux sur RF nets**
-
-Les prélèvements sociaux (17,2 %) s'appliquent sur le revenu foncier net taxable positif. En phase de déficit foncier (RF net ≤ 0), les PS sont nuls.
-
-> *Formule :* `PS = RF_net_taxable × 17,2 % (si positif, sinon 0)`
-> *📖 Art. L. 136-6 du CSS • Taux 2026 : 9,2 % CSG + 0,5 % CRDS + 7,5 % PS*
-""")
-
-    # ── 3️⃣ Dispositif Jeanbrun
+    # ── 3️⃣ Jeanbrun
     st.markdown('<div class="sec ora">3️⃣ DISPOSITIF JEANBRUN — Amortissement déductible</div>', unsafe_allow_html=True)
-    st.markdown("""
-**🏗️ Base et taux d'amortissement**
+    st.markdown(rule_block("🏗️", "Base et taux d'amortissement",
+        "L'amortissement Jeanbrun porte sur 80 % du prix d'acquisition (hors terrain) à un taux qui dépend du type de loyer pratiqué :\n• Intermédiaire : 3,5 % → plafond 8 000 €/an\n• Social : 4,5 % → plafond 10 000 €/an\n• Très social : 5,5 % → plafond 12 000 €/an\nLe plafond est global (tous biens Jeanbrun confondus pour le foyer).",
+        "Amt = MIN(Base_80% × Taux, Plafond_annuel)",
+        "📖 Art. 12 octies de la LF 2026, créant le i du 1° du I de l'art. 31 du CGI • Plafonds par foyer fiscal"), unsafe_allow_html=True)
+    st.markdown(rule_block("⚡", "L'amortissement crée du déficit foncier",
+        "C'est le premier dispositif fiscal permettant l'amortissement en location NUE. Jusqu'ici, seul le LMNP (location meublée) offrait cette possibilité.\nL'amortissement Jeanbrun est une charge déductible des revenus fonciers et PEUT générer du déficit foncier imputable sur le revenu global (dans la limite de 10 700 €).\nC'est le principal levier fiscal du dispositif : il transforme un revenu foncier positif en déficit.",
+        "RF_net = Loyers + RF_autres − Charges_fin − Charges_non_fin − Amort_JB",
+        "📖 Art. 12 octies LF 2026 (i et j du 1° du I de l'art. 31) combiné avec art. 156-I-3° du CGI"), unsafe_allow_html=True)
+    st.markdown(rule_block("📋", "Engagement locatif",
+        "L'investisseur s'engage à louer le bien nu, à titre de résidence principale du locataire, pendant une durée fixe de 9 ans (non modulable).\nLe loyer est plafonné selon le type de loyer choisi : intermédiaire (−15 % vs marché), social (−30 %) ou très social (−45 %). Des plafonds de ressources du locataire s'appliquent.\nPas de zonage géographique : tout le territoire français est éligible.\nSeuls les appartements en immeubles collectifs sont éligibles (maisons individuelles exclues).\nInterdiction de louer à un membre du foyer fiscal ou à un ascendant/descendant.\nLogement neuf : RE2020 + DPE classe A ou B exigés. Ancien : travaux ≥ 30 % du prix d'acquisition.\nAcquisitions éligibles : entre la publication de la LFI 2026 et le 31 décembre 2028.",
+        "Engagement = 9 ans fermes · Loyer ≤ Plafond × SP × Coeff",
+        "📖 Art. 12 octies de la LF 2026 • Engagement 9 ans • Plafonds de loyers par type (décret à paraître)"), unsafe_allow_html=True)
 
-L'amortissement Jeanbrun porte sur **80 % du prix d'acquisition** (hors terrain) à un taux qui dépend du type de loyer pratiqué :
-- Intermédiaire : **3,5 %** → plafond **8 000 €/an**
-- Social : **4,5 %** → plafond **10 000 €/an**
-- Très social : **5,5 %** → plafond **12 000 €/an**
-
-Le plafond est global (tous biens Jeanbrun confondus pour le foyer).
-
-> *Formule :* `Amt = MIN(Base_80% × Taux, Plafond_annuel)`
-> *📖 Art. 12 octies de la LF 2026, créant le i du 1° du I de l'art. 31 du CGI*
-
-**⚡ L'amortissement crée du déficit foncier**
-
-C'est le premier dispositif fiscal permettant l'amortissement en location NUE. L'amortissement Jeanbrun est une charge déductible des revenus fonciers et PEUT générer du déficit foncier imputable sur le revenu global (dans la limite de 10 700 €).
-
-> *📖 Art. 12 octies LF 2026 combiné avec art. 156-I-3° du CGI*
-
-**📋 Engagement locatif**
-
-L'investisseur s'engage à louer le bien nu, à titre de résidence principale du locataire, pendant une durée fixe de **9 ans** (non modulable). Le loyer est plafonné selon le type choisi. Pas de zonage géographique. Seuls les appartements en immeubles collectifs sont éligibles. Acquisitions éligibles : entre la publication de la LFI 2026 et le 31 décembre 2028.
-
-> *📖 Art. 12 octies de la LF 2026 • Engagement 9 ans*
-""")
-
-    # ── 4️⃣ Charges déductibles
+    # ── 4️⃣ Charges
     st.markdown('<div class="sec blue">4️⃣ CHARGES DÉDUCTIBLES — Frais de financement</div>', unsafe_allow_html=True)
-    st.markdown("""
-**🏦 Frais initiaux de financement (Année 1)**
+    st.markdown(rule_block("🏦", "Frais initiaux de financement (Année 1)",
+        "Les frais de dossier bancaire, de garantie (ex: Crédit Logement) et de courtage sont des charges financières intégralement déductibles, l'année de leur paiement (Année 1 uniquement).\nLe simulateur les ajoute aux charges financières de l'Année 1, ce qui augmente le déficit initial.",
+        "R(An 1) = Intérêts + Assurance + Frais_garantie_dossier_courtage",
+        "📖 Art. 31-I-1°-d du CGI • BOI-RFPI-BASE-20-10 §30 à §60"), unsafe_allow_html=True)
+    st.markdown(rule_block("📈", "Intérêts d'emprunt et assurance",
+        "Les intérêts d'emprunt et les primes d'assurance emprunteur constituent les charges financières récurrentes, déductibles chaque année pendant toute la durée du prêt.\nEn cas de déficit, les intérêts excédentaires (non couverts par les loyers globaux) sont reportables sur les RF futurs, tandis que les charges non-financières sont déductibles du RG.",
+        "Charges_fin(N) = Intérêts(N) + Assurance(N)",
+        "📖 Art. 31-I-1°-d du CGI"), unsafe_allow_html=True)
 
-Les frais de dossier bancaire, de garantie et de courtage sont des charges financières intégralement déductibles, l'année de leur paiement (Année 1 uniquement).
-
-> *Formule :* `R(An 1) = Intérêts + Assurance + Frais_garantie_dossier_courtage`
-> *📖 Art. 31-I-1°-d du CGI*
-
-**📈 Intérêts d'emprunt et assurance**
-
-Les intérêts d'emprunt et les primes d'assurance emprunteur constituent les charges financières récurrentes, déductibles chaque année pendant toute la durée du prêt.
-
-> *📖 Art. 31-I-1°-d du CGI*
-""")
-
-    # ── 5️⃣ Plus-value
+    # ── 5️⃣ PV
     st.markdown('<div class="sec teal">5️⃣ PLUS-VALUE IMMOBILIÈRE — Revente du bien</div>', unsafe_allow_html=True)
-    st.markdown("""
-**🔴 Réintégration de l'amortissement Jeanbrun**
+    st.markdown(rule_block("🔴", "Réintégration de l'amortissement Jeanbrun",
+        "Lors de la revente, l'amortissement cumulé déduit via le Jeanbrun vient MAJORER la plus-value brute (il est soustrait du prix d'acquisition). C'est le « coût de sortie » du dispositif.\nL'art. 12 octies modifie l'art. 150 VB du CGI pour y intégrer explicitement les amortissements déduits au titre des i et j du 1° du I de l'art. 31.\n⚠️ Note : certaines sources contestent cette lecture. La doctrine administrative (BOFiP) n'est pas encore publiée. Le simulateur retient l'hypothèse prudente de la réintégration, conformément au texte voté.",
+        "PV_brute = Prix_vente − (Prix_achat + Frais_forfaitaires − Amt_cumulé)",
+        "📖 Art. 150 VB III du CGI (modifié par art. 12 octies LF 2026) • Décrets d'application attendus"), unsafe_allow_html=True)
+    st.markdown(rule_block("📉", "Abattements pour durée de détention",
+        "La PV brute bénéficie d'abattements progressifs selon la durée de détention, avec des barèmes distincts pour l'IR et les PS :\n• IR : 6 %/an de la 6e à la 21e année, 4 % la 22e → exonération totale à 22 ans.\n• PS : 1,65 %/an de la 6e à la 21e, 1,60 % la 22e, 9 %/an de la 23e à la 30e → exo à 30 ans.",
+        "PV_nette_IR = PV_brute × (1 − Abatt_IR%)",
+        "📖 Art. 150 VC du CGI • Barèmes détaillés dans l'onglet « Barème fiscal »"), unsafe_allow_html=True)
+    st.markdown(rule_block("💸", "Imposition : IR 19 % + PS 17,2 % + Surtaxe",
+        "La plus-value nette est soumise à :\n• IR au taux forfaitaire de 19 % (sur PV nette après abattement IR).\n• PS au taux de 17,2 % (sur PV nette après abattement PS).\n• Surtaxe progressive si la PV nette IR dépasse 50 000 € (de 2 % à 6 % selon barème).",
+        "Impôt_PV = PV_IR × 19 % + PV_PS × 17,2 % + Surtaxe(PV_IR)",
+        "📖 Art. 200 B et 1609 nonies G du CGI"), unsafe_allow_html=True)
+    st.markdown(rule_block("📐", "Barème de la surtaxe PV (> 50 000 €)",
+        "Tranches de la surtaxe sur PV nette imposable IR :\n• 50 001 → 60 000 € : 2 % avec lissage (60 000−PV) × 1/20\n• 60 001 → 100 000 € : 2 %\n• 100 001 → 110 000 € : 3 % avec lissage (110 000−PV) × 1/10\n• 110 001 → 150 000 € : 3 %\n• 150 001 → 160 000 € : 4 % avec lissage (160 000−PV) × 3/20\n• 160 001 → 200 000 € : 4 %\n• 200 001 → 210 000 € : 5 % avec lissage (210 000−PV) × 1/5\n• 210 001 → 250 000 € : 5 %\n• 250 001 → 260 000 € : 6 % avec lissage (260 000−PV) × 1/4\n• Au-delà de 260 000 € : 6 %",
+        "Surtaxe = PV × Taux − Lissage",
+        "📖 Art. 1609 nonies G du CGI • Barème dans l'onglet « Barème fiscal »"), unsafe_allow_html=True)
 
-Lors de la revente, l'amortissement cumulé déduit via le Jeanbrun vient MAJORER la plus-value brute (il est soustrait du prix d'acquisition).
-
-> *Formule :* `PV_brute = Prix_vente − (Prix_achat + Frais_forfaitaires − Amt_cumulé)`
-> *📖 Art. 150 VB III du CGI (modifié par art. 12 octies LF 2026)*
-
-**📉 Abattements pour durée de détention**
-
-La PV brute bénéficie d'abattements progressifs : IR (6%/an de la 6e à la 21e, exo à 22 ans) et PS (1,65%/an de la 6e à la 21e, 9%/an de la 23e à la 30e, exo à 30 ans).
-
-> *📖 Art. 150 VC du CGI*
-
-**💸 Imposition : IR 19 % + PS 17,2 % + Surtaxe**
-
-La plus-value nette est soumise à : IR au taux forfaitaire de **19 %**, PS au taux de **17,2 %**, et surtaxe progressive si la PV nette IR dépasse 50 000 € (de 2 % à 6 %).
-
-> *📖 Art. 200 B et 1609 nonies G du CGI*
-""")
-
-    # ── 6️⃣ Abattement 10 %
+    # ── 6️⃣ Abattement
     st.markdown('<div class="sec ora">6️⃣ ABATTEMENT 10 % — Frais professionnels</div>', unsafe_allow_html=True)
-    st.markdown(f"""
-**📊 Déduction forfaitaire de 10 %**
+    st.markdown(rule_block("📊", "Déduction forfaitaire de 10 % pour frais professionnels",
+        "La déduction forfaitaire de 10 % s'applique aux traitements & salaires (Art. 83-3° CGI) et aux pensions de retraite (Art. 158-5-a CGI), avec des plafonds distincts. Elle ne s'applique pas aux revenus des travailleurs non-salariés (BIC/BNC), qui déduisent leurs frais réels.",
+        "Salaires : Abatt = MAX(504 × N, MIN(Rev × 10 %, 14 171 × N))\nPensions : Abatt = MAX(442 × N, MIN(Rev × 10 %, 4 321 × N))\nTNS / Indépendants : Abatt = 0  [N = nb déclarants]",
+        "📖 Art. 83-3° du CGI (salaires) • Art. 158-5-a du CGI (pensions) • Plafonds applicables aux revenus 2025 (déclarés en 2026)"), unsafe_allow_html=True)
 
-- Salaires : `Abatt = MAX(504 × N, MIN(Rev × 10 %, 14 171 × N))`
-- Pensions : `Abatt = MAX(442 × N, MIN(Rev × 10 %, 4 321 × N))`
-- TNS / Indépendants : `Abatt = 0` &nbsp; [N = nb déclarants]
+    # ── 7️⃣ Surface pondérée
+    st.markdown('<div class="sec blue">7️⃣ SURFACE PONDÉRÉE & PLAFOND DE LOYER</div>', unsafe_allow_html=True)
+    st.markdown(rule_block("📐", "Calcul de la surface pondérée (surface utile)",
+        "Le plafond de loyer s'applique à la surface pondérée (« surface utile »), qui comprend la surface habitable augmentée de la moitié des surfaces annexes (balcons, loggias, caves... et terrasses dans la limite de 9 m²), le tout plafonné à 16 m² de surfaces annexes brutes (soit 8 m² après division par 2).\nLes jardins privatifs ne sont PAS des annexes : seules les terrasses accessibles en étage ou aménagées sur ouvrage enterré sont retenues.\n⚠️ Si le logement est en RDC, la terrasse est automatiquement exclue du calcul (présumée reposer sur le sol naturel et non sur du bâti).",
+        "SP = S_hab + MIN(Balcon + IF(RDC, 0, MIN(Terrasse, 9)), 16) ÷ 2",
+        "📖 Art. R. 353-16 du CCH (annexes) • Décret n° 2002-120 (surface utile) • Art. 2 terdecies D annexe III CGI"), unsafe_allow_html=True)
+    st.markdown(rule_block("🔢", "Coefficient multiplicateur de loyer",
+        "Un coefficient multiplicateur est appliqué au plafond de loyer par m² pour tenir compte de la taille du logement. Il avantage les petites surfaces.\nLe coefficient est plafonné à 1,2.\n⚠️ Ce coefficient est repris par analogie avec le dispositif Pinel. Les décrets d'application du Jeanbrun confirmeront ou ajusteront cette règle.",
+        "Coeff = TRUNC(MIN(0,7 + 19 ÷ SP, 1,2), 2) → Loyer max = Plafond/m² × SP × Coeff",
+        "📖 Art. 2 terdecies D de l'annexe III au CGI (coefficient Pinel) • Décrets Jeanbrun à paraître"), unsafe_allow_html=True)
 
-> *📖 Art. 83-3° du CGI (salaires) • Art. 158-5-a du CGI (pensions)*
-""")
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · CGI · Francis Lefebvre · Legifrance</div>', unsafe_allow_html=True)
-
+    # ── Disclaimer
+    st.markdown("""<div style="margin-top:.8rem;padding:.5rem .7rem;background:#fff3cd;border-radius:6px;border-left:4px solid #EA653D;font-size:.73rem;color:#555;line-height:1.6">
+    ⚠️ Ce document est fourni à titre pédagogique et ne constitue ni un conseil fiscal ni un conseil en investissement.
+    Les règles fiscales sont susceptibles d'évoluer. Consultez un professionnel habilité avant toute décision d'investissement.
+    Références législatives vérifiées au 02/2026.
+    </div>""", unsafe_allow_html=True)
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr · Osez dire OUI à l\'immobilier neuf !</div>', unsafe_allow_html=True)
 
 # ─────────────────────────────────────────────────────────────────
 # ONGLET 7 — PLAFONDS LOYERS (fidèle Excel)
