@@ -1,12 +1,13 @@
-É"""
-Simulateur Jeanbrun V9 — médicis Immobilier Neuf
-Moteur Python fidèle à 100% à Excel V9 · Charte Médicis 2024
-CORRECTIONS V10 :
-  - Amortissement Jeanbrun limité à l'engagement (9 ans)
-  - amt_cum figé après an 9 pour calcul PV
-  - Sidebar : texte visible sur fond sombre (-webkit-text-fill-color)
-  - Print A4 portrait : CSS dédié par onglet
-"""
+# -*- coding: utf-8 -*-
+#
+# Simulateur Jeanbrun V9 — médicis Immobilier Neuf
+# Moteur Python fidèle à 100% à Excel V9 · Charte Médicis 2024
+# CORRECTIONS V10 :
+#   - Amortissement Jeanbrun limité à l'engagement (9 ans)
+#   - amt_cum figé après an 9 pour calcul PV
+#   - Sidebar : texte visible sur fond sombre (-webkit-text-fill-color)
+#   - Print A4 portrait : CSS dédié par onglet
+#
 import streamlit as st
 import pandas as pd
 import math
