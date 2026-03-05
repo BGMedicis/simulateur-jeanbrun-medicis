@@ -946,86 +946,106 @@ with t1:
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 2 — SYNTHÈSE SIMPLIFIÉE (fidèle Excel : pas de graphique)
+# ONGLET 2 — SYNTHÈSE SIMPLIFIÉE (fidèle Excel : layout tabulaire HTML pur)
 # ─────────────────────────────────────────────────────────────────
 with t2:
     st.markdown('<div class="sec">PROJECTION SIMPLIFIÉE — DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
     st.caption("Compte en T • Moyennes mensuelles • Document non contractuel")
 
-    # ── En-tête récap (rows 4-7 Excel)
-    ea, eb = st.columns(2)
-    with ea:
-        st.markdown('<div class="sec blue sm">SITUATION DU FOYER</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| | |
-|---|---|
-| Revenus déclarés | **{fe(rev)}** | Parts | **{fn(parts,1)}** |
-| TMI | **{fp(res["tmi_v"])}** | Éco. fiscale an 1 | **{fe(res["eco1"])}** |
-| Mensualité crédit | **{fe(res["mens_tot"])}** | Apport | **{fe(apport)}** |
-""")
-    with eb:
-        st.markdown('<div class="sec teal sm">OPÉRATION IMMOBILIÈRE</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| | |
-|---|---|
-| Prix d'acquisition | **{fe(prix)}** | Zone | **{zone}** |
-| Surface pondérée | **{fn(res['sp'],1)} m²** |
-| Loyer mensuel initial | **{fe(res["lmens"])}** | {type_loyer} |
-""")
+    # ── En-tête récap (rows 4-7 Excel) — HTML pur
+    st.markdown(f"""
+    <div style="display:flex;gap:1.2rem;margin-bottom:.8rem">
+      <div style="flex:1">
+        <div class="sec blue sm" style="margin-top:0">SITUATION DU FOYER</div>
+        <table style="width:100%;font-size:.85rem;border-collapse:collapse">
+          <tr><td style="padding:.3rem .4rem">Revenus déclarés</td><td style="padding:.3rem .4rem;font-weight:700">{fe(rev)}</td>
+              <td style="padding:.3rem .4rem">Parts</td><td style="padding:.3rem .4rem;font-weight:700">{fn(parts,1)}</td></tr>
+          <tr><td style="padding:.3rem .4rem">TMI</td><td style="padding:.3rem .4rem;font-weight:700">{fp(res["tmi_v"])}</td>
+              <td style="padding:.3rem .4rem">Éco. fiscale an 1</td><td style="padding:.3rem .4rem;font-weight:700">{fe(res["eco1"])}</td></tr>
+          <tr><td style="padding:.3rem .4rem">Mensualité crédit</td><td style="padding:.3rem .4rem;font-weight:700">{fe(res["mens_tot"])}</td>
+              <td style="padding:.3rem .4rem">Apport</td><td style="padding:.3rem .4rem;font-weight:700">{fe(apport)}</td></tr>
+        </table>
+      </div>
+      <div style="flex:1">
+        <div class="sec teal sm" style="margin-top:0">OPÉRATION IMMOBILIÈRE</div>
+        <table style="width:100%;font-size:.85rem;border-collapse:collapse">
+          <tr><td style="padding:.3rem .4rem">Prix d'acquisition</td><td style="padding:.3rem .4rem;font-weight:700">{fe(prix)}</td>
+              <td style="padding:.3rem .4rem">Zone</td><td style="padding:.3rem .4rem;font-weight:700">{zone}</td></tr>
+          <tr><td style="padding:.3rem .4rem">Surface pondérée</td><td style="padding:.3rem .4rem;font-weight:700">{fn(res['sp'],1)} m²</td>
+              <td colspan="2"></td></tr>
+          <tr><td style="padding:.3rem .4rem">Loyer mensuel initial</td><td style="padding:.3rem .4rem;font-weight:700">{fe(res["lmens"])}</td>
+              <td colspan="2" style="padding:.3rem .4rem;font-weight:600;color:#888">{type_loyer}</td></tr>
+        </table>
+      </div>
+    </div>
+    """, unsafe_allow_html=True)
 
-    # ── Les 3 horizons (fidèle au layout Excel rows 11-33)
+    # ── Les 3 horizons — HTML pur (fidèle rows 11-33 Excel)
+    def horizon_html(h, label, n, bc, bg, icon):
+        ef = h["ef"]; ec = "#EA653D" if ef < 0 else "#009FA3"
+        return f"""
+        <div class="sec" style="background:{bc}">{icon} {label}</div>
+        <div style="font-size:.78rem;color:#888;margin-bottom:.5rem">Moyennes mensuelles calculées sur {n} ans ({n*12} mois)</div>
+        <div style="display:flex;gap:1rem;align-items:flex-start">
+          <!-- CE QUI RENTRE -->
+          <div style="flex:2.5">
+            <div style="color:#009FA3;font-weight:700;font-size:.8rem;margin-bottom:.35rem">✚ CE QUI RENTRE (+)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+              <tr style="border-bottom:1px solid #eee"><td style="padding:.35rem .4rem">Loyer mensuel moyen</td>
+                  <td style="padding:.35rem .4rem;text-align:right;font-weight:700">{fe(h['lm'])}</td></tr>
+              <tr style="border-bottom:1px solid #eee"><td style="padding:.35rem .4rem">Gain fiscal à réinvestir / mois</td>
+                  <td style="padding:.35rem .4rem;text-align:right;font-weight:700">{fe(h['gm'])}</td></tr>
+              <tr style="border-top:2px solid #009FA3"><td style="padding:.4rem;font-weight:700">TOTAL ENTRÉES</td>
+                  <td style="padding:.4rem;text-align:right;font-weight:700">{fe(h['te'])}</td></tr>
+            </table>
+          </div>
+          <!-- CE QUI SORT -->
+          <div style="flex:2.5">
+            <div style="color:#EA653D;font-weight:700;font-size:.8rem;margin-bottom:.35rem">− CE QUI SORT (−)</div>
+            <table style="width:100%;border-collapse:collapse;font-size:.85rem">
+              <tr style="border-bottom:1px solid #eee"><td style="padding:.35rem .4rem">Mensualité de crédit</td>
+                  <td style="padding:.35rem .4rem;text-align:right;font-weight:700">{fe(h['cm'])}</td></tr>
+              <tr style="border-bottom:1px solid #eee"><td style="padding:.35rem .4rem">Charges d'exploitation / mois</td>
+                  <td style="padding:.35rem .4rem;text-align:right;font-weight:700">{fe(h['chm'])}</td></tr>
+              <tr style="border-top:2px solid #EA653D"><td style="padding:.4rem;font-weight:700">TOTAL SORTIES</td>
+                  <td style="padding:.4rem;text-align:right;font-weight:700">{fe(h['ts'])}</td></tr>
+            </table>
+          </div>
+          <!-- EFFORT + BILAN -->
+          <div style="flex:3;background:{bg};border-radius:9px;padding:.85rem;border-top:4px solid {bc}">
+            <div style="font-size:.65rem;color:#888;text-transform:uppercase;letter-spacing:.04em">EFFORT D'INVESTISSEMENT MENSUEL MOYEN</div>
+            <div style="font-size:1.3rem;font-weight:800;color:{ec};margin:.15rem 0">{fe(abs(ef))}</div>
+            <div style="font-size:.72rem;color:#888;margin-bottom:.4rem">← Reste à charge mensuel réel après loyers et économie fiscale</div>
+            <hr style="margin:.3rem 0;border:none;border-top:1px solid #ddd">
+            <div style="font-size:.77rem;line-height:1.9">
+              <b>Capital constitué (net PV)</b> : {fe(h['cap0'])}<br>
+              <b>Gain fiscal total</b> : {fe(h['gft'])}<br>
+              <span style="margin-left:1rem;color:#888">dont déficit naturel (intérêts) : {fe(h['dont_d'])}</span><br>
+              <span style="margin-left:1rem;color:#3761AD">dont Jeanbrun (amortissement) : {fe(h['dont_j'])}</span>
+            </div>
+          </div>
+        </div>
+        """
+
     for lbl, hk, n, bc, bg, icon in [
-        ("🔹 HORIZON 9 ANS — COMPTE EN T", "h9", 9, "#3761AD", "#EEF2FB", "🔹"),
-        ("🔸 HORIZON 15 ANS — COMPTE EN T", "h15", 15, "#009FA3", "#E4F5F5", "🔸"),
-        ("⭐ HORIZON 25 ANS — COMPTE EN T", "h25", 25, "#EA653D", "#FEF0EC", "⭐"),
+        ("HORIZON 9 ANS — COMPTE EN T", "h9", 9, "#3761AD", "#EEF2FB", "🔹"),
+        ("HORIZON 15 ANS — COMPTE EN T", "h15", 15, "#009FA3", "#E4F5F5", "🔸"),
+        ("HORIZON 25 ANS — COMPTE EN T", "h25", 25, "#EA653D", "#FEF0EC", "⭐"),
     ]:
-        h = res[hk]
-        st.markdown(f'<div class="sec" style="background:{bc}">{lbl}</div>', unsafe_allow_html=True)
-        st.caption(f"Moyennes mensuelles calculées sur {n} ans ({n*12} mois)")
+        st.markdown(horizon_html(res[hk], lbl, n, bc, bg, icon), unsafe_allow_html=True)
 
-        ca2, cb2, cc2 = st.columns([2.5, 2.5, 3])
-        with ca2:
-            st.markdown(f"""<div style="color:#009FA3;font-weight:700;font-size:.8rem;margin-bottom:.2rem">✚ CE QUI RENTRE (+)</div>
-
-| | €/mois |
-|---|---|
-| Loyer mensuel moyen | **{fe(h["lm"])}** |
-| Gain fiscal à réinvestir / mois | **{fe(h["gm"])}** |
-| **TOTAL ENTRÉES** | **{fe(h["te"])}** |
-""")
-        with cb2:
-            st.markdown(f"""<div style="color:#EA653D;font-weight:700;font-size:.8rem;margin-bottom:.2rem">− CE QUI SORT (−)</div>
-
-| | €/mois |
-|---|---|
-| Mensualité de crédit | **{fe(h["cm"])}** |
-| Charges d'exploitation / mois | **{fe(h["chm"])}** |
-| **TOTAL SORTIES** | **{fe(h["ts"])}** |
-""")
-        with cc2:
-            ef = h["ef"]; ec = "#EA653D" if ef < 0 else "#009FA3"
-            st.markdown(f"""<div style="background:{bg};border-radius:9px;padding:.85rem;border-top:4px solid {bc}">
-              <div style="font-size:.65rem;color:#888;text-transform:uppercase">EFFORT D'INVESTISSEMENT MENSUEL MOYEN</div>
-              <div style="font-size:1.3rem;font-weight:800;color:{ec};margin:.2rem 0">{fe(abs(ef))}</div>
-              <div style="font-size:.72rem;color:#888;margin-bottom:.4rem">← Reste à charge mensuel réel après loyers et économie fiscale</div>
-              <hr style="margin:.3rem 0;border-color:#ddd">
-              <div style="font-size:.77rem;line-height:1.9">
-                <b>Capital constitué (net PV)</b> : {fe(h['cap0'])}<br>
-                <b>Gain fiscal total</b> : {fe(h['gft'])}<br>
-                &nbsp;&nbsp;&nbsp;dont déficit naturel (intérêts) : {fe(h['dont_d'])}<br>
-                &nbsp;&nbsp;&nbsp;dont Jeanbrun (amortissement) : {fe(h['dont_j'])}
-              </div></div>""", unsafe_allow_html=True)
-
-    st.markdown("---")
-    st.markdown("""**COMMENT LIRE CE TABLEAU**
-- ▸ Le côté **VERT (+)** = ce que vous percevez : loyers + économie d'impôt grâce au dispositif Jeanbrun.
-- ▸ Le côté **ROUGE (−)** = ce que vous déboursez : mensualité de crédit + charges d'exploitation.
-- ▸ L'**EFFORT D'ÉPARGNE** = reste à charge réel. Un chiffre négatif = complément mensuel à prévoir.
-- ▸ Le « Gain fiscal total » se décompose en deux parties qui s'additionnent :
-    - « dont déficit naturel » : l'économie liée aux intérêts d'emprunt, acquise même sans le Jeanbrun.
-    - « dont Jeanbrun » : l'économie supplémentaire apportée par l'amortissement du dispositif.
-- ▸ Ce document est une simulation non contractuelle. Hypothèses d'indexation et fiscalité constantes.
-""")
+    # ── Pédagogie (rows 36-43 Excel)
+    st.markdown("""<hr style="margin:1.2rem 0">
+    <div style="font-size:.82rem;line-height:1.8;padding:.6rem .8rem;background:#f9f9f9;border-radius:8px;border-left:4px solid #14415C">
+      <b style="color:#14415C">COMMENT LIRE CE TABLEAU</b><br>
+      ▸ Le côté <b style="color:#009FA3">VERT (+)</b> = ce que vous percevez : loyers + économie d'impôt grâce au dispositif Jeanbrun.<br>
+      ▸ Le côté <b style="color:#EA653D">ROUGE (−)</b> = ce que vous déboursez : mensualité de crédit + charges d'exploitation.<br>
+      ▸ L'<b>EFFORT D'ÉPARGNE</b> = reste à charge réel. Un chiffre négatif = complément mensuel à prévoir.<br>
+      ▸ Le « Gain fiscal total » se décompose en deux parties qui s'additionnent :<br>
+      <span style="margin-left:1.2rem">– « dont déficit naturel » : l'économie liée aux intérêts d'emprunt, acquise même sans le Jeanbrun.</span><br>
+      <span style="margin-left:1.2rem">– « dont Jeanbrun » : l'économie supplémentaire apportée par l'amortissement du dispositif.</span><br>
+      ▸ Ce document est une simulation non contractuelle. Hypothèses d'indexation et fiscalité constantes.
+    </div>""", unsafe_allow_html=True)
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr</div>', unsafe_allow_html=True)
 
 
