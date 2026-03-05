@@ -774,8 +774,9 @@ if res is None:
 ann = res["annees"]
 
 
+
 # ══════════════════════════════════════════════════════════════════
-#  GRAPHIQUES — MATPLOTLIB (toujours disponible)
+#  GRAPHIQUES — PLOTLY (interactif) + MATPLOTLIB (fallback)
 # ══════════════════════════════════════════════════════════════════
 import matplotlib
 matplotlib.use("Agg")
@@ -785,113 +786,104 @@ import matplotlib.ticker as mticker
 COLORS = {"blue": "#3761AD", "teal": "#009FA3", "ora": "#EA653D",
           "dark": "#14415C", "sal": "#F57E63", "lime": "#9a9b1a"}
 
+try:
+    import plotly.graph_objects as go
+    HAS_PLOTLY = True
+except ImportError:
+    HAS_PLOTLY = False
 
-def fig_capital_net(ann_data, title="Capital net constitué par année de détention"):
-    """Graphique capital net (0 % et +1,5 %) avec lignes verticales aux horizons."""
-    fig, ax = plt.subplots(figsize=(10, 3.2), dpi=100)
+
+def chart_capital_net(ann_data):
+    """Graphique capital net (0 % et +1,5 %) — interactif si plotly dispo."""
     xs = [a["an"] for a in ann_data]
-    ax.plot(xs, [a["cap0"] for a in ann_data], "-o", color=COLORS["blue"],
-            linewidth=2, markersize=3.5, label="0 % (prix stable)")
-    ax.plot(xs, [a["cap15"] for a in ann_data], "-o", color=COLORS["teal"],
-            linewidth=2, markersize=3.5, label="+1,5 %/an")
-    for vx, lbl, vc in [(9, "9 ans", COLORS["blue"]),
-                         (15, "15 ans", COLORS["teal"]),
-                         (25, "25 ans", COLORS["ora"])]:
-        ax.axvline(vx, ls="--", color=vc, alpha=.45, lw=1)
-        ax.text(vx + .3, ax.get_ylim()[1] * .92 if ax.get_ylim()[1] > 0 else 0,
-                lbl, fontsize=8, color=vc, fontweight="bold")
-    ax.axhline(0, ls="--", color="#ddd", lw=.8)
-    ax.set_xlabel("Année", fontsize=9)
-    ax.set_ylabel("€", fontsize=9)
-    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
-    ax.set_xticks(range(1, 26, 2))
-    ax.legend(loc="upper left", fontsize=8, framealpha=.8)
-    ax.set_title(title, fontsize=10, fontweight="bold", color=COLORS["dark"])
-    ax.grid(axis="y", alpha=.25)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-    fig.tight_layout()
-    return fig
+    y0 = [a["cap0"] for a in ann_data]
+    y15 = [a["cap15"] for a in ann_data]
+    if HAS_PLOTLY:
+        fig = go.Figure()
+        fig.add_trace(go.Scatter(x=xs, y=y0, mode="lines+markers", name="0 % (prix stable)",
+            line=dict(color=COLORS["blue"], width=2.5), marker=dict(size=5)))
+        fig.add_trace(go.Scatter(x=xs, y=y15, mode="lines+markers", name="+1,5 %/an",
+            line=dict(color=COLORS["teal"], width=2.5), marker=dict(size=5)))
+        for vx, vl, vc in [(9, "9 ans", COLORS["blue"]), (15, "15 ans", COLORS["teal"]), (25, "25 ans", COLORS["ora"])]:
+            fig.add_vline(x=vx, line_dash="dot", line_color=vc, opacity=.55,
+                annotation_text=vl, annotation_position="top", annotation_font=dict(color=vc, size=10))
+        fig.add_hline(y=0, line_dash="dash", line_color="#e0e0e0", opacity=.6)
+        fig.update_layout(height=280, margin=dict(l=8, r=8, t=8, b=8),
+            legend=dict(orientation="h", y=-.22), yaxis=dict(tickformat=",.0f"),
+            plot_bgcolor="white", paper_bgcolor="white",
+            font=dict(family="Poppins,sans-serif", size=10),
+            xaxis=dict(tickmode="linear", tick0=1, dtick=2, gridcolor="#f0f0f0", title="Année"),
+            yaxis_gridcolor="#f0f0f0", yaxis_title="€")
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        fig, ax = plt.subplots(figsize=(10, 3.2), dpi=100)
+        ax.plot(xs, y0, "-o", color=COLORS["blue"], lw=2, ms=3.5, label="0 % (prix stable)")
+        ax.plot(xs, y15, "-o", color=COLORS["teal"], lw=2, ms=3.5, label="+1,5 %/an")
+        for vx, lbl, vc in [(9, "9 ans", COLORS["blue"]), (15, "15 ans", COLORS["teal"]), (25, "25 ans", COLORS["ora"])]:
+            ax.axvline(vx, ls="--", color=vc, alpha=.45, lw=1)
+        ax.axhline(0, ls="--", color="#ddd", lw=.8)
+        ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
+        ax.set_xticks(range(1, 26, 2)); ax.set_xlabel("Année"); ax.set_ylabel("€")
+        ax.legend(loc="upper left", fontsize=8); ax.grid(axis="y", alpha=.25)
+        fig.patch.set_facecolor("white"); ax.set_facecolor("white"); fig.tight_layout()
+        st.pyplot(fig)
 
 
-def fig_amort_pret(amttab_data, mempr, ta):
-    """Graphique amortissement du prêt (stacked bar + CRD)."""
-    fig, ax1 = plt.subplots(figsize=(10, 2.8), dpi=100)
+def chart_amort_pret(amttab_data, mempr_val, ta_val):
+    """Graphique amortissement du prêt — stacked bar + CRD."""
     xs = list(range(1, len(amttab_data) + 1))
     ints = [r["int"] for r in amttab_data]
     princs = [r["princ"] for r in amttab_data]
     crds = [r["crd"] for r in amttab_data]
-    ax1.bar(xs, ints, color=COLORS["ora"], alpha=.85, label="Intérêts")
-    ax1.bar(xs, princs, bottom=ints, color=COLORS["blue"], alpha=.85, label="Capital")
-    ax1.set_ylabel("€/an", fontsize=9)
-    ax1.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
-    ax2 = ax1.twinx()
-    ax2.plot(xs, crds, color=COLORS["teal"], lw=2.5, label="CRD €")
-    ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
-    ax2.set_ylabel("CRD (€)", fontsize=9)
-    h1, l1 = ax1.get_legend_handles_labels()
-    h2, l2 = ax2.get_legend_handles_labels()
-    ax1.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=8, framealpha=.8)
-    ax1.set_xlabel("Année", fontsize=9)
-    ax1.set_title("Amortissement du prêt", fontsize=10, fontweight="bold", color=COLORS["dark"])
-    fig.patch.set_facecolor("white")
-    ax1.set_facecolor("white")
-    fig.tight_layout()
-    return fig
-
-
-def fig_effort_eco(ann_data):
-    """Graphique effort mensuel + économie fiscale par année."""
-    fig, ax = plt.subplots(figsize=(10, 3), dpi=100)
-    xs = [a["an"] for a in ann_data]
-    efforts = [a["effort"] for a in ann_data]
-    ecos = [a["eco"] / 12 for a in ann_data]
-    ax.bar(xs, ecos, color=COLORS["teal"], alpha=.75, label="Éco. fiscale/mois")
-    ax.plot(xs, efforts, "-o", color=COLORS["ora"], lw=2, markersize=3, label="Effort/mois")
-    ax.axhline(0, ls="--", color="#ddd", lw=.8)
-    ax.set_xlabel("Année", fontsize=9)
-    ax.set_ylabel("€/mois", fontsize=9)
-    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
-    ax.legend(fontsize=8, framealpha=.8)
-    ax.set_title("Effort mensuel et économie fiscale", fontsize=10, fontweight="bold", color=COLORS["dark"])
-    ax.grid(axis="y", alpha=.25)
-    fig.patch.set_facecolor("white")
-    ax.set_facecolor("white")
-    fig.tight_layout()
-    return fig
+    if HAS_PLOTLY:
+        fig = go.Figure()
+        fig.add_trace(go.Bar(x=xs, y=ints, name="Intérêts", marker_color=COLORS["ora"], opacity=.85))
+        fig.add_trace(go.Bar(x=xs, y=princs, name="Capital", marker_color=COLORS["blue"], opacity=.85))
+        fig.add_trace(go.Scatter(x=xs, y=crds, name="CRD €", yaxis="y2",
+            line=dict(color=COLORS["teal"], width=2.5), mode="lines"))
+        fig.update_layout(barmode="stack", height=250, margin=dict(l=8, r=8, t=8, b=8),
+            yaxis2=dict(overlaying="y", side="right", tickformat=",.0f"),
+            legend=dict(orientation="h", y=-.3), plot_bgcolor="white", paper_bgcolor="white",
+            font=dict(family="Poppins,sans-serif", size=10),
+            xaxis=dict(title="Année", gridcolor="#f0f0f0"), yaxis=dict(title="€/an", gridcolor="#f0f0f0"))
+        st.plotly_chart(fig, use_container_width=True)
+    else:
+        fig, ax1 = plt.subplots(figsize=(10, 2.8), dpi=100)
+        ax1.bar(xs, ints, color=COLORS["ora"], alpha=.85, label="Intérêts")
+        ax1.bar(xs, princs, bottom=ints, color=COLORS["blue"], alpha=.85, label="Capital")
+        ax1.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
+        ax2 = ax1.twinx()
+        ax2.plot(xs, crds, color=COLORS["teal"], lw=2.5, label="CRD €")
+        ax2.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
+        h1, l1 = ax1.get_legend_handles_labels(); h2, l2 = ax2.get_legend_handles_labels()
+        ax1.legend(h1 + h2, l1 + l2, loc="upper right", fontsize=8)
+        ax1.set_xlabel("Année"); fig.patch.set_facecolor("white"); ax1.set_facecolor("white"); fig.tight_layout()
+        st.pyplot(fig)
 
 
 # ══════════════════════════════════════════════════════════════════
 #  ONGLETS
 # ══════════════════════════════════════════════════════════════════
 t1, t2, t3, t4, t5, t6, t7, t8, t9, t10 = st.tabs([
-    "👁️ Synthèse visuelle",
-    "📋 Synthèse simplifiée",
-    "📈 Synthèse détaillée",
-    "🏦 Revente & Plus-value",
-    "⚙️ Moteur",
-    "📐 Règles fiscales",
-    "🏘️ Plafonds loyers",
-    "📊 Barème fiscal",
-    "💰 Tableau d'amortissement",
-    "🖨️ Imprimer",
+    "👁️ Synthèse visuelle", "📋 Synthèse simplifiée", "📈 Synthèse détaillée",
+    "🏦 Revente & Plus-value", "⚙️ Moteur", "📐 Règles fiscales",
+    "🏘️ Plafonds loyers", "📊 Barème fiscal", "💰 Tableau d'amortissement", "🖨️ Imprimer",
 ])
 
-
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 1 — SYNTHÈSE VISUELLE
+# ONGLET 1 — SYNTHÈSE VISUELLE (fidèle au layout Excel)
 # ─────────────────────────────────────────────────────────────────
 with t1:
     st.markdown('<div class="sec">▸ DISPOSITIF JEANBRUN — Projection simplifiée · Simulation personnalisée</div>', unsafe_allow_html=True)
 
-    # ── KPI Cards
+    # ── KPI Cards (row 4-7 Excel)
     kpis = [
         ("REVENUS DÉCLARÉS", fe(rev), f"{fn(parts,1)} parts fiscales", ""),
-        ("TRANCHE MARGINALE", fp(res["tmi_v"]), f"Taux moy. {fp(ann[0]['tx_moy_avant'])}", "t"),
+        ("TRANCHE MARGINALE", fp(res["tmi_v"]), "", "t"),
         ("PRIX D'ACQUISITION", fe(prix), f"{type_loyer}", "o"),
-        ("LOYER INITIAL", fe(res["lmens"]), f"/ mois retenu", "d"),
+        ("LOYER INITIAL", fe(res["lmens"]), "/ mois retenu", "d"),
         ("SURFACE / ZONE", f"{fn(res['sp'],1)} m²  ·  Zone {zone}", f"Coeff. {fn(res['coeff'],2)}", "l"),
-        ("ÉCONOMIE FISCALE AN 1", fe(res["eco1"]), f"TMI après {fp(ann[0]['tmi_apres'])}", "t"),
+        ("ÉCONOMIE FISCALE AN 1", fe(res["eco1"]), "", "t"),
     ]
     cols_k = st.columns(6)
     for col, (lbl, val, sub, cls) in zip(cols_k, kpis):
@@ -900,12 +892,11 @@ with t1:
                         f'<div class="kpi-val">{val}</div>'
                         f'<div class="kpi-sub">{sub}</div></div>', unsafe_allow_html=True)
 
-    # ── Comptes en T
-    st.markdown('<div class="sec">📊 COMPTE EN T — Moyennes mensuelles calculées sur chaque horizon</div>', unsafe_allow_html=True)
+    # ── Comptes en T (rows 9-21 Excel)
+    st.markdown('<div class="sec">📊 COMPTE EN T · Moyennes mensuelles calculées sur chaque horizon</div>', unsafe_allow_html=True)
 
     def cnt_html(h, label, yrs, bg, bc, icon):
-        ef = h["ef"]
-        ec = "#EA653D" if ef < 0 else "#009FA3"
+        ef = h["ef"]; ec = "#EA653D" if ef < 0 else "#009FA3"
         le = "Reste à charge / mois" if ef < 0 else "Cashflow positif / mois"
         return f"""<div class="cnt" style="background:{bg};border-top-color:{bc}">
           <div style="font-weight:700;color:#14415C;font-size:.88rem;margin-bottom:.6rem">
@@ -914,625 +905,682 @@ with t1:
             <tr><td class="hd" style="color:#009FA3">✚ CE QUI RENTRE</td>
                 <td class="hd" style="color:#EA653D">− CE QUI SORT</td></tr>
             <tr><td>Loyers moy. <b>{fe(h['lm'])}</b></td><td>Crédit <b>{fe(h['cm'])}</b></td></tr>
-            <tr><td>Gain fiscal moy. <b>{fe(h['gm'])}</b></td><td>Charges <b>{fe(h['chm'])}</b></td></tr>
+            <tr><td>Gain fiscal <b>{fe(h['gm'])}</b></td><td>Charges <b>{fe(h['chm'])}</b></td></tr>
             <tr class="sep"><td>Total <b>{fe(h['te'])}</b></td><td>Total <b>{fe(h['ts'])}</b></td></tr>
           </table>
           <div class="cnt-tot"><div style="font-size:.64rem;color:#888;text-transform:uppercase;letter-spacing:.06em">{le}</div>
             <div style="font-size:1.2rem;font-weight:800;color:{ec}">{fe(abs(ef))}/mois</div></div>
           <div class="cnt-bil">
-            <b>Capital net (0%)</b> : {fe(h['cap0'])} · <b>(+1,5%)</b> : {fe(h['cap15'])}<br>
-            <b>Gain fiscal total</b> : {fe(h['gft'])}<br>
-            <span style="color:#888"><em>dont déficit naturel</em> : {fe(h['dont_d'])}</span><br>
-            <span style="color:#3761AD"><em>dont Jeanbrun</em> : {fe(h['dont_j'])}</span>
+            Capital net si prix vente = prix d'achat · dont {fe(h['dont_j'])} via Jeanbrun<br>
+            <b style="font-size:1.05rem;color:{bc}">{fe(h['cap0'])}</b>
           </div></div>"""
 
     c9, c15, c25 = st.columns(3)
-    with c9:
-        st.markdown(cnt_html(res["h9"], "Fin d'engagement", "9 ans", "#EEF2FB", "#3761AD", "🔹"), unsafe_allow_html=True)
-    with c15:
-        st.markdown(cnt_html(res["h15"], "Horizon de référence", "15 ans", "#E4F5F5", "#009FA3", "🔸"), unsafe_allow_html=True)
-    with c25:
-        st.markdown(cnt_html(res["h25"], "Financement soldé", "25 ans", "#FEF0EC", "#EA653D", "⭐"), unsafe_allow_html=True)
+    with c9:  st.markdown(cnt_html(res["h9"], "Fin d'engagement", "9 ans", "#EEF2FB", "#3761AD", "🔹"), unsafe_allow_html=True)
+    with c15: st.markdown(cnt_html(res["h15"], "★ Horizon de référence", "15 ans", "#E4F5F5", "#009FA3", "🔸"), unsafe_allow_html=True)
+    with c25: st.markdown(cnt_html(res["h25"], "Financement soldé", "25 ans", "#FEF0EC", "#EA653D", "⭐"), unsafe_allow_html=True)
 
-    # ── Graphique capital net — MATPLOTLIB (toujours rendu)
-    st.markdown('<div class="sec no-print">📈 Capital net par année — 0% et +1,5%/an</div>', unsafe_allow_html=True)
-    st.pyplot(fig_capital_net(ann))
+    # ── Graphique interactif capital net (rows 23-38 Excel = chart)
+    st.markdown('<div class="sec no-print">📈 Capital net constitué par année de détention (Valeur revente − CRD − impôt PV) · 0% et 1,5%</div>', unsafe_allow_html=True)
+    chart_capital_net(ann)
 
-    # ── Pédagogie
+    # ── Pédagogie (rows 39-40 Excel)
     p1, p2, p3 = st.columns(3)
-    with p1:
-        st.markdown("""<div class="ped" style="background:#EAF6EE">
+    with p1: st.markdown("""<div class="ped" style="background:#EAF6EE">
       <div class="ped-ico">💶</div><div class="ped-tit" style="color:#009FA3">Le côté vert (+)</div>
-      <div class="ped-txt">Loyers encaissés + économie d'impôt Jeanbrun. Ces flux réduisent votre effort mensuel.</div>
-      </div>""", unsafe_allow_html=True)
-    with p2:
-        st.markdown("""<div class="ped" style="background:#FEF0EC">
+      <div class="ped-txt">Ce que vous percevez : loyers encaissés + économie d'impôt grâce au dispositif Jeanbrun.</div></div>""", unsafe_allow_html=True)
+    with p2: st.markdown("""<div class="ped" style="background:#FEF0EC">
       <div class="ped-ico">🏦</div><div class="ped-tit" style="color:#EA653D">Le côté rouge (−)</div>
-      <div class="ped-txt">Mensualité de crédit + charges d'exploitation (gestion, GLI, taxe foncière, PNO, travaux).</div>
-      </div>""", unsafe_allow_html=True)
-    with p3:
-        st.markdown("""<div class="ped" style="background:#EEF2FB">
-      <div class="ped-ico">📊</div><div class="ped-tit" style="color:#3761AD">Gain fiscal — 2 sources</div>
-      <div class="ped-txt"><b>Déficit naturel</b> (intérêts d'emprunt, acquis sans Jeanbrun) + <b>Jeanbrun</b> (amortissement sur 9 ans).</div>
-      </div>""", unsafe_allow_html=True)
+      <div class="ped-txt">Ce que vous déboursez : mensualité de crédit + charges d'exploitation annuelles (gestion / GLI / taxe foncière / assurance PNO / provisions menus travaux ; ces charges sont estimées).</div></div>""", unsafe_allow_html=True)
+    with p3: st.markdown("""<div class="ped" style="background:#EEF2FB">
+      <div class="ped-ico">📊</div><div class="ped-tit" style="color:#3761AD">Le gain fiscal — 2 composantes</div>
+      <div class="ped-txt">Déficit naturel (acquis sans Jeanbrun) + avantage lié à l'amortissement Jeanbrun. Les deux s'additionnent.</div></div>""", unsafe_allow_html=True)
 
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr · Document non contractuel · Hypothèses d\'indexation et fiscalité constantes</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr · Simulation personnalisée non contractuelle · Hypothèses d\'indexation et fiscalité constantes · Tout investissement locatif comporte des risques (location / impayés / travaux / baisse de valeur)</div>', unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 2 — SYNTHÈSE SIMPLIFIÉE
+# ONGLET 2 — SYNTHÈSE SIMPLIFIÉE (fidèle Excel : pas de graphique)
 # ─────────────────────────────────────────────────────────────────
 with t2:
-    st.markdown('<div class="sec">SYNTHÈSE — Compte en T · Moyennes mensuelles par horizon</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec">PROJECTION SIMPLIFIÉE — DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
+    st.caption("Compte en T • Moyennes mensuelles • Document non contractuel")
+
+    # ── En-tête récap (rows 4-7 Excel)
     ea, eb = st.columns(2)
     with ea:
-        st.markdown('<div class="sec blue sm">FOYER</div>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame({
-            "Paramètre": ["Revenus déclarés", "TMI", "Parts fiscales", "Mensualité totale", "Éco. fiscale an 1", "Apport"],
-            "Valeur":    [fe(rev), fp(res["tmi_v"]), fn(parts, 1), fe(res["mens_tot"]), fe(res["eco1"]), fe(apport)],
-        }), hide_index=True, use_container_width=True, height=240)
+        st.markdown('<div class="sec blue sm">SITUATION DU FOYER</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+| | |
+|---|---|
+| Revenus déclarés | **{fe(rev)}** | Parts | **{fn(parts,1)}** |
+| TMI | **{fp(res["tmi_v"])}** | Éco. fiscale an 1 | **{fe(res["eco1"])}** |
+| Mensualité crédit | **{fe(res["mens_tot"])}** | Apport | **{fe(apport)}** |
+""")
     with eb:
-        st.markdown('<div class="sec teal sm">OPÉRATION</div>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame({
-            "Paramètre": ["Prix d'acquisition", "Frais acq.", "Zone / SP pondérée", "Loyer initial retenu",
-                         "Type / amort. Jeanbrun", "Amortissement/an"],
-            "Valeur":    [fe(prix), fp(frais_pct), f"Zone {zone} · {fn(res['sp'],1)} m²",
-                         fe(res["lmens"]), f"{type_loyer} · {fp(TAUX_AMT[type_loyer])}",
-                         fe(res["amort_an"])],
-        }), hide_index=True, use_container_width=True, height=240)
+        st.markdown('<div class="sec teal sm">OPÉRATION IMMOBILIÈRE</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+| | |
+|---|---|
+| Prix d'acquisition | **{fe(prix)}** | Zone | **{zone}** |
+| Surface pondérée | **{fn(res['sp'],1)} m²** |
+| Loyer mensuel initial | **{fe(res["lmens"])}** | {type_loyer} |
+""")
 
-    st.markdown("---")
+    # ── Les 3 horizons (fidèle au layout Excel rows 11-33)
     for lbl, hk, n, bc, bg, icon in [
-        ("HORIZON 9 ANS — Fin durée d'engagement",              "h9",  9,  "#3761AD", "#EEF2FB", "🔹"),
-        ("HORIZON 15 ANS — Horizon de référence",               "h15", 15, "#009FA3", "#E4F5F5", "🔸"),
-        ("HORIZON 25 ANS — Financement soldé · Pleine propriété", "h25", 25, "#EA653D", "#FEF0EC", "⭐"),
+        ("🔹 HORIZON 9 ANS — COMPTE EN T", "h9", 9, "#3761AD", "#EEF2FB", "🔹"),
+        ("🔸 HORIZON 15 ANS — COMPTE EN T", "h15", 15, "#009FA3", "#E4F5F5", "🔸"),
+        ("⭐ HORIZON 25 ANS — COMPTE EN T", "h25", 25, "#EA653D", "#FEF0EC", "⭐"),
     ]:
         h = res[hk]
-        st.markdown(f'<div class="sec" style="background:{bc}">{icon} {lbl}</div>', unsafe_allow_html=True)
+        st.markdown(f'<div class="sec" style="background:{bc}">{lbl}</div>', unsafe_allow_html=True)
         st.caption(f"Moyennes mensuelles calculées sur {n} ans ({n*12} mois)")
-        ca2, cb2, cc2 = st.columns([2.5, 2.5, 2])
+
+        ca2, cb2, cc2 = st.columns([2.5, 2.5, 3])
         with ca2:
-            st.markdown('<div style="color:#009FA3;font-weight:700;font-size:.82rem;margin-bottom:.25rem">✚ CE QUI RENTRE (+)</div>', unsafe_allow_html=True)
-            st.dataframe(pd.DataFrame({
-                "":       ["Loyer mensuel moyen", "Gain fiscal/mois", "TOTAL ENTRÉES"],
-                "€/mois": [fe(h["lm"]), fe(h["gm"]), fe(h["te"])],
-            }), hide_index=True, use_container_width=True, height=145)
+            st.markdown(f"""<div style="color:#009FA3;font-weight:700;font-size:.8rem;margin-bottom:.2rem">✚ CE QUI RENTRE (+)</div>
+
+| | €/mois |
+|---|---|
+| Loyer mensuel moyen | **{fe(h["lm"])}** |
+| Gain fiscal à réinvestir / mois | **{fe(h["gm"])}** |
+| **TOTAL ENTRÉES** | **{fe(h["te"])}** |
+""")
         with cb2:
-            st.markdown('<div style="color:#EA653D;font-weight:700;font-size:.82rem;margin-bottom:.25rem">− CE QUI SORT (−)</div>', unsafe_allow_html=True)
-            st.dataframe(pd.DataFrame({
-                "":       ["Mensualité de crédit", "Charges/mois", "TOTAL SORTIES"],
-                "€/mois": [fe(h["cm"]), fe(h["chm"]), fe(h["ts"])],
-            }), hide_index=True, use_container_width=True, height=145)
+            st.markdown(f"""<div style="color:#EA653D;font-weight:700;font-size:.8rem;margin-bottom:.2rem">− CE QUI SORT (−)</div>
+
+| | €/mois |
+|---|---|
+| Mensualité de crédit | **{fe(h["cm"])}** |
+| Charges d'exploitation / mois | **{fe(h["chm"])}** |
+| **TOTAL SORTIES** | **{fe(h["ts"])}** |
+""")
         with cc2:
-            ef = h["ef"]
-            ec = "#EA653D" if ef < 0 else "#009FA3"
-            st.markdown(f"""<div style="background:{bg};border-radius:9px;padding:.85rem;text-align:center;border-top:4px solid {bc}">
-              <div style="font-size:.64rem;color:#888;text-transform:uppercase;letter-spacing:.06em">Effort d'investissement mensuel</div>
-              <div style="font-size:1.2rem;font-weight:800;color:{ec};margin:.25rem 0">{fe(abs(ef))}</div>
+            ef = h["ef"]; ec = "#EA653D" if ef < 0 else "#009FA3"
+            st.markdown(f"""<div style="background:{bg};border-radius:9px;padding:.85rem;border-top:4px solid {bc}">
+              <div style="font-size:.65rem;color:#888;text-transform:uppercase">EFFORT D'INVESTISSEMENT MENSUEL MOYEN</div>
+              <div style="font-size:1.3rem;font-weight:800;color:{ec};margin:.2rem 0">{fe(abs(ef))}</div>
+              <div style="font-size:.72rem;color:#888;margin-bottom:.4rem">← Reste à charge mensuel réel après loyers et économie fiscale</div>
               <hr style="margin:.3rem 0;border-color:#ddd">
-              <div style="font-size:.75rem;text-align:left;line-height:1.85">
-                <b>Capital net (0%)</b> : {fe(h['cap0'])}<br>
-                <b>Capital net (+1,5%)</b> : {fe(h['cap15'])}<br>
+              <div style="font-size:.77rem;line-height:1.9">
+                <b>Capital constitué (net PV)</b> : {fe(h['cap0'])}<br>
                 <b>Gain fiscal total</b> : {fe(h['gft'])}<br>
-                <em style="color:#888">dont déficit</em> : {fe(h['dont_d'])}<br>
-                <em style="color:#3761AD">dont Jeanbrun</em> : {fe(h['dont_j'])}
+                &nbsp;&nbsp;&nbsp;dont déficit naturel (intérêts) : {fe(h['dont_d'])}<br>
+                &nbsp;&nbsp;&nbsp;dont Jeanbrun (amortissement) : {fe(h['dont_j'])}
               </div></div>""", unsafe_allow_html=True)
 
     st.markdown("---")
-    st.markdown("""**Comment lire ce tableau :**
-- ▸ Le côté **VERT (+)** = loyers + économie d'impôt Jeanbrun.
-- ▸ Le côté **ROUGE (−)** = mensualité de crédit + charges.
-- ▸ L'**EFFORT** = reste à charge réel. Négatif = complément mensuel à prévoir.
-- ▸ Le gain fiscal se décompose : **déficit naturel** (intérêts, même sans Jeanbrun) + **Jeanbrun** (amortissement 9 ans).
+    st.markdown("""**COMMENT LIRE CE TABLEAU**
+- ▸ Le côté **VERT (+)** = ce que vous percevez : loyers + économie d'impôt grâce au dispositif Jeanbrun.
+- ▸ Le côté **ROUGE (−)** = ce que vous déboursez : mensualité de crédit + charges d'exploitation.
+- ▸ L'**EFFORT D'ÉPARGNE** = reste à charge réel. Un chiffre négatif = complément mensuel à prévoir.
+- ▸ Le « Gain fiscal total » se décompose en deux parties qui s'additionnent :
+    - « dont déficit naturel » : l'économie liée aux intérêts d'emprunt, acquise même sans le Jeanbrun.
+    - « dont Jeanbrun » : l'économie supplémentaire apportée par l'amortissement du dispositif.
+- ▸ Ce document est une simulation non contractuelle. Hypothèses d'indexation et fiscalité constantes.
 """)
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr · Document non contractuel</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr</div>', unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 3 — SYNTHÈSE DÉTAILLÉE
+# ONGLET 3 — SYNTHÈSE DÉTAILLÉE (fidèle Excel)
 # ─────────────────────────────────────────────────────────────────
 with t3:
     st.markdown('<div class="sec">PROJECTION FINANCIÈRE — DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
     st.caption("Simulation personnalisée • Document non contractuel")
 
-    ca, cb, cc = st.columns(3)
-    with ca:
+    # ── En-tête 4 blocs (rows 4-12 Excel)
+    c3a, c3b = st.columns(2)
+    with c3a:
         st.markdown('<div class="sec blue sm">SITUATION DU FOYER</div>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame({
-            "": ["Revenus déclarés", "Abattement", "Revenus nets", "RF autres biens",
-                 "IR avant opération", "PS avant opération", "Total impôt avant", "TMI", "Parts"],
-            "Valeur": [fe(rev), fe(res["ab"]), fe(res["rn"]), fe(rfa),
-                       fe(res["ir_ref"]), fe(res["ps_ref"]), fe(res["tot_ref"]),
-                       fp(res["tmi_v"]), fn(parts, 1)],
-        }), hide_index=True, use_container_width=True, height=340)
-    with cb:
-        st.markdown('<div class="sec teal sm">FINANCEMENT</div>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame({
-            "": ["Prix d'acquisition", "Frais d'acquisition", "Coût total", "Apport", "Montant emprunté",
-                 "Taux nominal", "Durée", "Mensualité hors assur.", "Assurance/mois", "Mensualité totale"],
-            "Valeur": [fe(prix), fe(prix * frais_pct), fe(res["cout"]), fe(apport), fe(res["mempr"]),
-                       fp(ti), f"{duree} ans", fe(res["mens_tot"] - res["mempr"] * ta / 12),
-                       fe(res["mempr"] * ta / 12), fe(res["mens_tot"])],
-        }), hide_index=True, use_container_width=True, height=380)
-    with cc:
-        st.markdown('<div class="sec ora sm">DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame({
-            "": ["Zone / Surface pond.", "Loyer max légal", "Loyer retenu", "Coefficient",
-                 "Type de loyer", "Base amortissable (80%)", "Taux d'amortissement", "Plafond annuel",
-                 "▸ Amortissement retenu/an", "Durée engagement", f"Amort. total ({duree_amort} ans)", "Éco. fiscale an 1"],
-            "Valeur": [f"Zone {zone} · {fn(res['sp'],1)} m²",
-                       fe(res["lmax"]), fe(res["lmens"]), fn(res["coeff"], 2),
-                       type_loyer, fe(res["base_a"]), fp(TAUX_AMT[type_loyer]),
-                       fe(PLAF_AMT[type_loyer]), fe(res["amort_an"]),
-                       f"{duree_amort} ans", fe(res["amort_an"] * duree_amort), fe(res["eco1"])],
-        }), hide_index=True, use_container_width=True, height=440)
-
-    # ── Projection 25 ans (toutes colonnes clés + TRI + Amt restant)
-    st.markdown('<div class="sec blue">PROJECTION ANNUELLE 25 ANS</div>', unsafe_allow_html=True)
-    rows3 = []
-    for a in ann:
-        amt_rest = res["base_a"] - a["amt_cum"]
-        rows3.append({
-            "An":          a["an"],
-            "Loyers":      round(a["lo"], 0),
-            "Rembours.":   round(a["remb"], 0),
-            "Charges":     round(a["ch"], 0),
-            "Amort. JB":   round(a["amort_yr"], 0),
-            "RF net imputé": round(a["rfn"], 0),
-            "IR avant":    round(a["ir_av"], 0),
-            "IR après":    round(a["ir_ap"], 0),
-            "Éco. fiscale": round(a["eco"], 0),
-            "Effort/mois": round(a["effort"], 0),
-            "Cap. net 0%": round(a["cap0"], 0),
-            "Cap. +1,5%":  round(a["cap15"], 0),
-            "Amt restant": round(amt_rest, 0),
-        })
-    df_det = pd.DataFrame(rows3)
-
-    # Ligne totaux
-    totals = {
-        "An": "TOTAL",
-        "Loyers": round(sum(a["lo"] for a in ann), 0),
-        "Rembours.": round(sum(a["remb"] for a in ann), 0),
-        "Charges": round(sum(a["ch"] for a in ann), 0),
-        "Amort. JB": round(sum(a["amort_yr"] for a in ann), 0),
-        "Éco. fiscale": round(sum(a["eco"] for a in ann), 0),
-    }
-    df_total = pd.DataFrame([totals])
-    df_show = pd.concat([df_det, df_total], ignore_index=True)
-    st.dataframe(df_show, hide_index=True, use_container_width=True, height=580)
-
-    # ── Graphique effort + éco fiscale
-    st.markdown('<div class="sec teal sm no-print">📉 EFFORT MENSUEL & ÉCONOMIE FISCALE</div>', unsafe_allow_html=True)
-    st.pyplot(fig_effort_eco(ann))
-
-    # ── Bilan global
-    st.markdown('<div class="sec ora">BILAN GLOBAL DE L\'OPÉRATION</div>', unsafe_allow_html=True)
-    b1, b2, b3 = st.columns(3)
-    with b1:
-        st.markdown(f"""
-| Indicateur | Valeur |
-|---|---|
-| Total loyers perçus (25 ans) | **{fe(sum(a['lo'] for a in ann))}** |
-| Total remboursements prêt | **{fe(sum(a['remb'] for a in ann))}** |
-| Total charges exploitation | **{fe(sum(a['ch'] for a in ann))}** |
-| Total amortissements Jeanbrun | **{fe(sum(a['amort_yr'] for a in ann))}** |
-| **Total économie fiscale** | **{fe(sum(a['eco'] for a in ann))}** |
-""")
-    with b2:
-        tri9 = ann[8]["tri"]
-        tri15 = ann[14]["tri"]
-        tri25 = ann[24]["tri"]
-        st.markdown(f"""
-| TRI investisseur (si revente) | Valeur |
-|---|---|
-| TRI à 9 ans | **{fp(tri9) if tri9 is not None else '—'}** |
-| TRI à 15 ans | **{fp(tri15) if tri15 is not None else '—'}** |
-| TRI à 25 ans | **{fp(tri25) if tri25 is not None else '—'}** |
-""")
-    with b3:
-        st.markdown(f"""
-| Cash‑flow cumulé | Valeur |
-|---|---|
-| CF cumulé à 9 ans | **{fe(ann[8]['cashflow_cum'])}** |
-| CF cumulé à 15 ans | **{fe(ann[14]['cashflow_cum'])}** |
-| CF cumulé à 25 ans | **{fe(ann[24]['cashflow_cum'])}** |
-""")
-    st.caption("Le TRI mesure la rentabilité annualisée si revente à la date indiquée, après impôt PV. "
-               "L'effort d'épargne est le reste à charge mensuel réel après loyers et économie fiscale.")
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne non contractuel</div>', unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────────
-# ONGLET 4 — REVENTE & PLUS-VALUE
-# ─────────────────────────────────────────────────────────────────
-with t4:
-    st.markdown('<div class="sec">🏦 SIMULATION DE REVENTE — Calcul pédagogique de la plus-value nette</div>', unsafe_allow_html=True)
-    cols3 = st.columns(3)
-    for col, (an_r, lbl, bc, bg, icon) in zip(cols3, [
-        (9,  "REVENTE À 9 ANS",  "#3761AD", "#EEF2FB", "🔹"),
-        (15, "REVENTE À 15 ANS", "#009FA3", "#E4F5F5", "🔸"),
-        (25, "REVENTE À 25 ANS", "#EA653D", "#FEF0EC", "⭐"),
-    ]):
-        a = ann[an_r - 1]
-        with col:
-            st.markdown(f"<div style='font-weight:700;font-size:.95rem;color:{bc};margin-bottom:.5rem'>{icon} {lbl}</div>", unsafe_allow_html=True)
-            for titre, pv_v, pv_b, ipv, cap in [
-                ("0% — prix stable",     prix,                 a["pv0"],  a["ipv0"],  a["cap0"]),
-                ("+1,5%/an — historique", prix * (1.015 ** an_r), a["pv15"], a["ipv15"], a["cap15"]),
-            ]:
-                pvi = max(0, pv_b * (1 - a["ai"]))
-                pps = max(0, pv_b * (1 - a["ap"]))
-                ir_pv = pvi * TAUX_IR_PV
-                ps_pv = pps * TAUX_PS_PV
-                surt = max(0.0, surtaxe(pvi))
-                cap_col = "#009FA3" if cap > 0 else "#EA653D"
-                st.markdown(f"""<div style="background:{bg};border-radius:9px;padding:.85rem 1rem;
-                  margin-bottom:.6rem;border-left:4px solid {bc}">
-                  <div style="font-weight:700;font-size:.79rem;color:{bc};margin-bottom:.4rem">Scénario {titre}</div>
-                  <div style="font-size:.78rem;line-height:1.95">
-                  Prix de vente : <b>{fe(pv_v)}</b><br>
-                  Prix d'acquisition : <b>{fe(prix)}</b><br>
-                  + Frais acq. 7,5% (forfait) : +{fe(a['fac'])}<br>
-                  + Travaux 15% (si > 5 ans) : +{fe(a['ftv'])}<br>
-                  − Amort. réintégrés : −{fe(a['amt_cum'])}<br>
-                  <b>= Prix de revient corrigé : {fe(a['pr'])}</b><br>
-                  <b style="color:{bc}">➜ PV brute : {fe(pv_b)}</b><br>
-                  Abatt. IR {fp(a['ai'],1)} → base imposable : {fe(pvi)}<br>
-                  Abatt. PS {fp(a['ap'],1)} → base imposable : {fe(pps)}<br>
-                  IR 19% : {fe(ir_pv)} · PS 17,2% : {fe(ps_pv)}<br>
-                  Surtaxe : {fe(surt)}<br>
-                  <b>Impôt PV total : <span style="color:#EA653D">{fe(ipv)}</span></b><br>
-                  CRD à solder : −{fe(a['crd'])}<br>
-                  <span style="color:{cap_col};font-weight:800;font-size:.95rem">✅ Capital net : {fe(cap)}</span>
-                  </div></div>""", unsafe_allow_html=True)
-
-    st.markdown('<div class="sec blue">💡 COMPRENDRE CES CHIFFRES</div>', unsafe_allow_html=True)
-    st.markdown("""
-- ▸ Capital net = ce qui reste **en poche** après avoir soldé le crédit et payé l'impôt sur la plus-value.
-- ▸ **Exonération totale IR** : à partir de **22 ans** de détention. **PS** : à partir de **30 ans**.
-- ▸ L'amortissement Jeanbrun (9 ans) est réintégré dans le prix de revient — mais l'économie d'impôt réalisée chaque année vous a déjà enrichi durant la période locative.
-- ▸ À 25 ans, le crédit est soldé (CRD = 0) : capital net = valeur du bien − impôt PV uniquement.
-- ▸ Le scénario **0%** est conservateur. Le **+1,5%/an** reflète l'évolution historique moyenne du marché immobilier français.
-""")
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr · Simulation personnalisée non contractuelle</div>', unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────────
-# ONGLET 5 — MOTEUR (49 colonnes Excel)
-# ─────────────────────────────────────────────────────────────────
-with t5:
-    st.markdown('<div class="sec">⚙️ MOTEUR — Données brutes · 49 colonnes Excel V9</div>', unsafe_allow_html=True)
-
-    rows5 = []
-    for a in ann:
-        rows5.append({
-            "An": a["an"],
-            "Loyers": round(a["lo"], 2),
-            "Charges": round(a["ch"], 2),
-            "Intérêts": round(a["int_a"], 2),
-            "Assurance": round(a["ass_a"], 2),
-            "Amort.JB": round(a["amort_yr"], 2),
-            "CRD": round(a["crd"], 2),
-            "Val.bien": round(prix, 0),
-            "RF autres": round(rfa, 0),
-            "Rev.tot.av.": round(a["rev_total_avant"], 2),
-            "QF av.": round(a["qf_avant"], 2),
-            "TMI av.": fp(a["tmi_avant"]),
-            "Tx moy av.": fp(a["tx_moy_avant"]),
-            "IR av.": round(a["ir_av"], 2),
-            "PS av.": round(a["ps_av"], 2),
-            "Tot. av.": round(a["tot_av"], 2),
-            "RF bruts": round(a["rf_b"], 2),
-            "Ch.fin.": round(a["ch_f"], 2),
-            "Ch.non-fin": round(a["ch_nf"], 2),
-            "RF net gl.": round(a["rfn"], 2),
-            "Déd.RG": round(a["ded"], 2),
-            "Déf.gén.": round(a["def_g"], 2),
-            "Stock déf.": round(a["stock_def"], 2),
-            "Déf.imp.": round(a["def_imp"], 2),
-            "RF net tax.": round(a["rfnt"], 2),
-            "Rev.après": round(a["rev_ap"], 2),
-            "QF ap.": round(a["qf_apres"], 2),
-            "TMI ap.": fp(a["tmi_apres"]),
-            "Tx moy ap.": fp(a["tx_moy_apres"]),
-            "IR ap.": round(a["ir_ap"], 2),
-            "PS ap.": round(a["ps_ap"], 2),
-            "Tot. ap.": round(a["tot_ap"], 2),
-            "Éco.fisc.": round(a["eco"], 2),
-            "Enrichis.": round(a["enrichissement"], 2),
-            "Eff./mois": round(a["effort"], 2),
-            # Col 36 omitted (summary only)
-            "CF cum.": round(a["cashflow_cum"], 2),
-            "Amt.cum.": round(a["amt_cum"], 2),
-            "Stock rpt": round(a["stock_rpt_amt"], 2),
-            "PV brute 0%": round(a["pv0"], 2),
-            "Ab.IR": fp(a["ai"]),
-            "PV imp.IR": round(a["pvi0"], 2),
-            "Ab.PS": fp(a["ap"]),
-            "PV imp.PS": round(a["pps0"], 2),
-            "Imp.PV": round(a["ipv0"], 2),
-            "Déf.périmé": round(a["def_perime"], 2),
-            "TRI": fp(a["tri"]) if a["tri"] is not None else "—",
-            "CSG d.av.": round(a["csg_ded_av"], 2),
-            "CSG d.ap.": round(a["csg_ded_ap"], 2),
-            "Cap.0%": round(a["cap0"], 2),
-            "Cap.+1,5%": round(a["cap15"], 2),
-        })
-    st.dataframe(pd.DataFrame(rows5), hide_index=True, use_container_width=True, height=600)
-    st.markdown("""
-**Colonnes clés :** · *RF net gl.* = RF bruts − Ch.fin − Ch.non-fin (dont amort. JB limité à 9 ans)  
-· *Déd.RG* = déficit imputable RG (plaf. 10 700 €) · *Stock déf.* = report 10 ans  
-· *Amt.cum.* = amortissements cumulés réellement déduits (figé après an 9) · *PR* = prix de revient pour PV  
-· *TRI* = taux de rentabilité interne si revente à l'année N · *CF cum.* = cash‑flow cumulé avec apport  
-· *CSG d.av./ap.* = CSG déductible avant/après (6,8% des RF, imputable N+1) · *Déf.périmé* = déficit périmé > 10 ans
-""")
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne non contractuel</div>', unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────────
-# ONGLET 6 — RÈGLES FISCALES
-# ─────────────────────────────────────────────────────────────────
-with t6:
-    st.markdown('<div class="sec">📐 RÈGLES FISCALES — Références législatives dispositif Jeanbrun</div>', unsafe_allow_html=True)
-    r1, r2 = st.columns(2)
-    with r1:
-        st.markdown('<div class="sec blue sm">DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
-        st.markdown("""
-| Paramètre | Valeur | Référence |
-|---|---|---|
-| Base amortissable | 80% du prix | Art. 2 quindecies B ann. III CGI |
-| Taux — Loyer intermédiaire | **3,5 %** | Art. 2 quindecies B |
-| Taux — Loyer social | **4,5 %** | Art. 2 quindecies B |
-| Taux — Loyer très social | **5,5 %** | Art. 2 quindecies B |
-| Plafond — Intermédiaire | **8 000 €/an** | Art. 2 quindecies B |
-| Plafond — Social | **10 000 €/an** | Art. 2 quindecies B |
-| Plafond — Très social | **12 000 €/an** | Art. 2 quindecies B |
-| Durée engagement initial | **9 ans** | Art. 199 novovicies CGI |
-| Renouvellement possible | 2 × 3 ans (15 ans max) | Art. 199 novovicies |
-| Réintégration à la revente | Amortissements déduits | Art. 150 VB CGI |
-| Coefficient loyer | TRUNC((0,7+19/SP)×100)/100 | Art. 2 terdecies D |
-""")
-        st.markdown('<div class="sec teal sm">DÉFICIT FONCIER — ART. 156-I-3 CGI</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| Règle | Valeur |
-|---|---|
-| Plafond imputation revenu global | **10 700 €/an** |
-| Déficit issu intérêts d'emprunt | Non imputable sur RG → report RF seulement |
-| Déficit issu charges non-financières | Imputable RG (plaf. 10 700 €) |
-| Report déficit excédentaire | **10 ans** |
-| Engagement de location après imputation | **3 ans minimum** |
-
-> **Votre simulation an 1 :** Déd. RG = **{fe(ann[0]["ded"])}** · Déficit généré = **{fe(ann[0]["def_g"])}**
-""")
-        st.markdown('<div class="sec ora sm">PLUS-VALUE IMMOBILIÈRE — ART. 150 U CGI</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| Paramètre | Valeur |
-|---|---|
-| Forfait frais acquisition | 7,5% du prix d'achat |
-| Forfait travaux (si > 5 ans) | 15% du prix d'achat |
-| Taux IR plus-value | **19 %** |
-| Taux PS plus-value | **17,2 %** |
-| Exonération totale IR | **22 ans** de détention |
-| Exonération totale PS | **30 ans** de détention |
-| Surtaxe | De 2% à 6% au-delà de 50 000 € de PV |
-""")
-    with r2:
-        st.markdown('<div class="sec blue sm">ABATTEMENTS DURÉE DE DÉTENTION (abatt. IR / PS)</div>', unsafe_allow_html=True)
-        abr = []
-        for yr in range(1, 31):
-            ai = abatt_ir_pv(yr)
-            apv = abatt_ps_pv(yr)
-            abr.append({"An": yr, "Abatt. IR": fp(ai), "IR résiduel": fp(1 - ai),
-                         "Abatt. PS": fp(apv), "PS résiduelle": fp(1 - apv)})
-        st.dataframe(pd.DataFrame(abr), hide_index=True, use_container_width=True, height=550)
-        st.markdown("> Exonération IR complète : **an 22** · Exonération PS complète : **an 30**")
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · CGI · Francis Lefebvre · Legifrance · Document interne non contractuel</div>', unsafe_allow_html=True)
-
-
-# ─────────────────────────────────────────────────────────────────
-# ONGLET 7 — PLAFONDS LOYERS
-# ─────────────────────────────────────────────────────────────────
-with t7:
-    st.markdown('<div class="sec">🏘️ PLAFONDS DE LOYERS — Art. 2 terdecies D ann. III CGI · 2025/2026</div>', unsafe_allow_html=True)
-    pl1, pl2 = st.columns([2.5, 1.5])
-    with pl1:
-        st.markdown('<div class="sec blue sm">PLAFONDS €/m²/MOIS — Par zone et type</div>', unsafe_allow_html=True)
-        pd_rows = []
-        for z, v in PLAFONDS_LOYERS.items():
-            pd_rows.append({"Zone": z,
-                            "Intermédiaire": f"{v['Loyer intermédiaire']} €/m²/mois",
-                            "Social": f"{v['Loyer social']} €/m²/mois",
-                            "Très social": f"{v['Loyer très social']} €/m²/mois"})
-        st.dataframe(pd.DataFrame(pd_rows), hide_index=True, use_container_width=True)
-        st.markdown("> **Loyer max légal** = Plafond €/m²/mois × **Surface pondérée** × **Coefficient**")
-        st.markdown(f'<div class="sec teal sm">SIMULATION LOYER MAX — VOTRE BIEN ({fn(res["sp"],1)} m² · Coeff {fn(res["coeff"],2)})</div>', unsafe_allow_html=True)
-        sim_r = []
-        for z, v in PLAFONDS_LOYERS.items():
-            for tl, plm2 in v.items():
-                lm = plm2 * res["sp"] * res["coeff"]
-                sim_r.append({"Zone": z, "Type": tl, "€/m²": f"{plm2}",
-                              "Max légal": fe(lm),
-                              f"Loyer {ls}€ ?": "✅ OK" if ls <= lm else "❌ Dépasse"})
-        st.dataframe(pd.DataFrame(sim_r), hide_index=True, use_container_width=True)
-    with pl2:
-        st.markdown('<div class="sec ora sm">PLAFONDS D\'AMORTISSEMENT</div>', unsafe_allow_html=True)
-        st.markdown("""
-| Type | Taux | Plafond/an |
-|---|---|---|
-| Intermédiaire | **3,5 %** | **8 000 €** |
-| Social | **4,5 %** | **10 000 €** |
-| Très social | **5,5 %** | **12 000 €** |
-_Base : 80% du prix d'acquisition_
-""")
-        st.markdown('<div class="sec blue sm">ZONES GÉOGRAPHIQUES</div>', unsafe_allow_html=True)
-        st.markdown("""
-| Zone | Périmètre |
-|---|---|
-| **A bis** | Paris + 76 communes |
-| **A** | Île-de-France (hors A bis), Côte d'Azur, Genevois |
-| **B1** | > 250 000 hab., grande couronne |
-| **B2** | 50–250 000 hab. (sur agrément) |
-| **C** | Reste du territoire |
-""")
-        st.markdown('<div class="sec teal sm">VOTRE SIMULATION</div>', unsafe_allow_html=True)
         st.markdown(f"""
 | | |
 |---|---|
-| Zone | **{zone}** |
-| Type | **{type_loyer}** |
-| Surface hab. | **{surf} m²** |
-| Balcon/Terrasse | {balcon}/{terrasse} m² |
-| RDC | **{rdc}** |
-| **SP pondérée** | **{fn(res["sp"],1)} m²** |
-| **Coefficient** | **{fn(res["coeff"],2)}** |
-| **Loyer max légal** | **{fe(res["lmax"])}/mois** |
-| **Loyer retenu** | **{fe(res["lmens"])}/mois** |
+| Revenus déclarés (avant abatt.) | **{fe(rev)}** |
+| Impôt avant opération | **{fe(res["tot_ref"])}** |
+| Impôt après opération (an 1) | **{fe(ann[0]["tot_ap"])}** |
+| Nombre de parts | **{fn(parts,1)}** |
+| TMI | **{fp(res["tmi_v"])}** |
+| Économie fiscale an 1 | **{fe(res["eco1"])}** |
 """)
+        st.markdown('<div class="sec blue sm">FINANCEMENT</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+| | |
+|---|---|
+| Apport personnel | **{fe(apport)}** |
+| Montant emprunté | **{fe(res["mempr"])}** |
+| Taux nominal | **{fp(ti)}** |
+| Mensualité totale | **{fe(res["mens_tot"])}** |
+""")
+    with c3b:
+        st.markdown('<div class="sec teal sm">OPÉRATION IMMOBILIÈRE</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+| | |
+|---|---|
+| Prix d'acquisition | **{fe(prix)}** |
+| Zone | **{zone}** |
+| Surface pondérée | **{fn(res['sp'],1)} m²** |
+| Type de loyer | **{type_loyer}** |
+| Loyer mensuel initial | **{fe(res["lmens"])}** |
+""")
+        st.markdown('<div class="sec teal sm">DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
+        st.markdown(f"""
+| | |
+|---|---|
+| Base amortissable (80%) | **{fe(res["base_a"])}** |
+| Amortissement annuel | **{fe(res["amort_an"])}** |
+| Plafond annuel | **{fe(PLAF_AMT[type_loyer])}** |
+| Charges exploitation | **{fp(cp)}** |
+""")
+
+    # ── Tableau 25 ans (rows 14-41 Excel — colonnes identiques)
+    st.markdown('<div class="sec ora">PROJECTION ANNUELLE</div>', unsafe_allow_html=True)
+    rows3 = []
+    for a in ann:
+        rows3.append({
+            "Année": a["an"],
+            "Loyers perçus": round(a["lo"], 0),
+            "Rembours. prêt": round(a["remb"], 0),
+            "Charges exploit.": round(a["ch"], 0),
+            "Amort. Jeanbrun": round(a["amort_yr"], 0),
+            "Revenu foncier net imputé": round(a["rfn"] + a["ded"], 0),
+            "Impôt avant": round(a["ir_av"] + a["ps_av"], 0),
+            "Impôt après": round(a["ir_ap"] + a["ps_ap"], 0),
+            "Économie fiscale": round(a["eco"], 0),
+            "Effort invest. mensuel": round(a["effort"], 0),
+            "Capital net (0%)": round(a["cap0"], 0),
+            "Capital net (1,5%)": round(a["cap15"], 0),
+            "Amt restant": round(res["base_a"] - a["amt_cum"], 0),
+        })
+    df_det = pd.DataFrame(rows3)
+    totals3 = {"Année": "TOTAL",
+               "Loyers perçus": round(sum(a["lo"] for a in ann), 0),
+               "Rembours. prêt": round(sum(a["remb"] for a in ann), 0),
+               "Charges exploit.": round(sum(a["ch"] for a in ann), 0),
+               "Amort. Jeanbrun": round(sum(a["amort_yr"] for a in ann), 0),
+               "Économie fiscale": round(sum(a["eco"] for a in ann), 0)}
+    df_show = pd.concat([df_det, pd.DataFrame([totals3])], ignore_index=True)
+    st.dataframe(df_show, hide_index=True, use_container_width=True, height=580)
+
+    # ── Graphique capital net (= le chart Excel de cette feuille)
+    st.markdown('<div class="sec blue sm no-print">📈 Capital net constitué par année</div>', unsafe_allow_html=True)
+    chart_capital_net(ann)
+
+    st.caption("━ Ligne 15 ans = horizon de référence • ━ Ligne 25 ans = fin de crédit")
+    st.caption("Le TRI mesure la rentabilité annualisée si revente à la date indiquée, après impôt PV. "
+               "L'effort d'épargne est le reste à charge mensuel réel après loyers et économie fiscale.")
+
+    # ── Bilan global (row 46 Excel)
+    st.markdown('<div class="sec dark">BILAN GLOBAL DE L\'OPÉRATION</div>', unsafe_allow_html=True)
+    b1, b2 = st.columns(2)
+    with b1:
+        st.markdown(f"""
+| | Valeur |
+|---|---|
+| Total loyers perçus | **{fe(sum(a['lo'] for a in ann))}** |
+| Total remboursements | **{fe(sum(a['remb'] for a in ann))}** |
+| Total charges | **{fe(sum(a['ch'] for a in ann))}** |
+| Total amort. Jeanbrun | **{fe(sum(a['amort_yr'] for a in ann))}** |
+| **Total éco. fiscale** | **{fe(sum(a['eco'] for a in ann))}** |
+""")
+    with b2:
+        tri9 = ann[8]["tri"]; tri15 = ann[14]["tri"]; tri25 = ann[24]["tri"]
+        st.markdown(f"""
+| TRI investisseur (si revente) | |
+|---|---|
+| TRI à 9 ans | **{fp(tri9) if tri9 else '—'}** |
+| TRI à 15 ans | **{fp(tri15) if tri15 else '—'}** |
+| TRI à 25 ans | **{fp(tri25) if tri25 else '—'}** |
+""")
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne non contractuel</div>', unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────────
+# ONGLET 4 — REVENTE & PLUS-VALUE (fidèle layout Excel tabulaire)
+# ─────────────────────────────────────────────────────────────────
+with t4:
+    st.markdown('<div class="sec">SIMULATION DE REVENTE — DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
+    st.caption("Calcul pédagogique de la plus-value et de votre enrichissement net à la revente")
+
+    cols4 = st.columns(3)
+    for col4, (an_r, lbl, bc, bg, icon) in zip(cols4, [
+        (9,  "🔹 REVENTE À 9 ANS",  "#3761AD", "#EEF2FB", "🔹"),
+        (15, "🔸 REVENTE À 15 ANS", "#009FA3", "#E4F5F5", "🔸"),
+        (25, "⭐ REVENTE À 25 ANS", "#EA653D", "#FEF0EC", "⭐"),
+    ]):
+        a = ann[an_r - 1]
+        vb15 = prix * (1.015 ** an_r)
+        # PV calculations for 1.5% scenario
+        pv15 = a["pv15"]; pvi15 = a["pvi15"]; pps15 = a["pps15"]
+        ir_pv15 = pvi15 * TAUX_IR_PV; ps_pv15 = pps15 * TAUX_PS_PV
+        surt15 = max(0., surtaxe(pvi15)); ipv15 = a["ipv15"]
+        cap15 = a["cap15"]
+        # 0% scenario
+        pv0 = a["pv0"]; pvi0 = a["pvi0"]; pps0 = a["pps0"]
+        ir_pv0 = pvi0 * TAUX_IR_PV; ps_pv0 = pps0 * TAUX_PS_PV
+        surt0 = max(0., surtaxe(pvi0)); ipv0 = a["ipv0"]
+        cap0 = a["cap0"]
+
+        with col4:
+            st.markdown(f'<div class="sec" style="background:{bc}">{lbl}</div>', unsafe_allow_html=True)
+
+            st.markdown(f"""
+**PRIX DE VENTE**
+
+| | Scénario 0% | Scénario +1,5% |
+|---|---|---|
+| Prix de vente | {fe(prix)} | {fe(vb15)} |
+
+**CALCUL DE LA PLUS-VALUE**
+
+| | Valeur |
+|---|---|
+| Prix d'acquisition | {fe(prix)} |
+| + Forfait frais acq. (7,5%) | +{fe(a['fac'])} |
+| + Forfait travaux 15% (si > 5 ans) | +{fe(a['ftv'])} |
+| – Amortissements réintégrés | –{fe(a['amt_cum'])} |
+| **= Prix de revient corrigé** | **{fe(a['pr'])}** |
+
+| | 0% | +1,5% |
+|---|---|---|
+| ➜ **PV brute** | **{fe(pv0)}** | **{fe(pv15)}** |
+
+**ABATTEMENTS POUR DURÉE DE DÉTENTION**
+
+| | 0% | +1,5% |
+|---|---|---|
+| Abattement IR | {fp(a['ai'],1)} | {fp(a['ai'],1)} |
+| PV imposable IR | {fe(pvi0)} | {fe(pvi15)} |
+| Abattement PS | {fp(a['ap'],1)} | {fp(a['ap'],1)} |
+| PV imposable PS | {fe(pps0)} | {fe(pps15)} |
+
+**IMPÔT SUR LA PLUS-VALUE**
+
+| | 0% | +1,5% |
+|---|---|---|
+| IR (19%) | {fe(ir_pv0)} | {fe(ir_pv15)} |
+| PS (17,2%) | {fe(ps_pv0)} | {fe(ps_pv15)} |
+| Surtaxe | {fe(surt0)} | {fe(surt15)} |
+| **= TOTAL IMPÔT PV** | **{fe(ipv0)}** | **{fe(ipv15)}** |
+
+**CAPITAL RESTANT DÛ** : {fe(a['crd'])}
+
+**CAPITAL CONSTITUÉ NET**
+
+| | Valeur |
+|---|---|
+| **Net (0%)** | **{fe(cap0)}** |
+| **Net (+1,5%)** | **{fe(cap15)}** |
+""")
+
+    # ── Pédagogie (rows 45-49 Excel)
+    st.markdown('<div class="sec blue">💡 COMPRENDRE VOTRE ENRICHISSEMENT</div>', unsafe_allow_html=True)
+    st.markdown("""
+- ▸ Le capital constitué net = ce qui vous reste **en poche** après avoir soldé votre crédit et payé l'impôt sur la plus-value.
+- ▸ Plus vous détenez longtemps, plus les abattements pour durée de détention réduisent l'impôt PV : exonération totale d'IR à **22 ans**, de PS à **30 ans**.
+- ▸ L'amortissement Jeanbrun est réintégré dans la plus-value à la revente, mais l'économie d'impôt réalisée chaque année (déficit foncier) vous a déjà profité.
+- ▸ Le scénario **0%** est conservateur (pas de hausse des prix). Le **+1,5%/an** reflète l'évolution historique moyenne du marché immobilier français.
+""")
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Simulation personnalisée non contractuelle</div>', unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────────
+# ONGLET 5 — MOTEUR (49 colonnes)
+# ─────────────────────────────────────────────────────────────────
+with t5:
+    st.markdown('<div class="sec">⚙️ MOTEUR — Données brutes · 49 colonnes Excel V9</div>', unsafe_allow_html=True)
+    rows5 = []
+    for a in ann:
+        rows5.append({
+            "An": a["an"], "Loyers": round(a["lo"], 2), "Charges": round(a["ch"], 2),
+            "Intérêts": round(a["int_a"], 2), "Assurance": round(a["ass_a"], 2),
+            "Amort.JB": round(a["amort_yr"], 2), "CRD": round(a["crd"], 2),
+            "RF autres": round(rfa, 0),
+            "Tot.av.": round(a["tot_av"], 2), "TMI av.": fp(a["tmi_avant"]),
+            "IR av.": round(a["ir_av"], 2), "PS av.": round(a["ps_av"], 2),
+            "RF bruts": round(a["rf_b"], 2), "Ch.fin.": round(a["ch_f"], 2),
+            "Ch.non-fin": round(a["ch_nf"], 2), "RF net gl.": round(a["rfn"], 2),
+            "Déd.RG": round(a["ded"], 2), "Déf.gén.": round(a["def_g"], 2),
+            "Stock déf.": round(a["stock_def"], 2), "Déf.imp.": round(a["def_imp"], 2),
+            "RF net tax.": round(a["rfnt"], 2), "Rev.après": round(a["rev_ap"], 2),
+            "TMI ap.": fp(a["tmi_apres"]),
+            "IR ap.": round(a["ir_ap"], 2), "PS ap.": round(a["ps_ap"], 2),
+            "Éco.fisc.": round(a["eco"], 2), "Enrichis.": round(a["enrichissement"], 2),
+            "Eff./mois": round(a["effort"], 2),
+            "CF cum.": round(a["cashflow_cum"], 2),
+            "Amt.cum.": round(a["amt_cum"], 2),
+            "PV brute": round(a["pv0"], 2), "Ab.IR": fp(a["ai"]),
+            "PV imp.IR": round(a["pvi0"], 2), "Ab.PS": fp(a["ap"]),
+            "PV imp.PS": round(a["pps0"], 2), "Imp.PV": round(a["ipv0"], 2),
+            "Déf.pér.": round(a["def_perime"], 2),
+            "TRI": fp(a["tri"]) if a["tri"] is not None else "—",
+            "CSG d.av.": round(a["csg_ded_av"], 2), "CSG d.ap.": round(a["csg_ded_ap"], 2),
+            "Cap.0%": round(a["cap0"], 2), "Cap.+1,5%": round(a["cap15"], 2),
+        })
+    st.dataframe(pd.DataFrame(rows5), hide_index=True, use_container_width=True, height=600)
+    st.markdown("""
+**Colonnes clés :** · *RF net gl.* = RF bruts − Ch.fin − Ch.non-fin · *Déd.RG* = déficit imputable RG (plaf. 10 700 €)  
+· *Stock déf.* = report 10 ans · *TRI* = taux de rentabilité interne si revente · *CSG d.* = CSG déductible 6,8 %
+""")
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne</div>', unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────────
+# ONGLET 6 — RÈGLES FISCALES (fidèle Excel : 6 sections pédagogiques)
+# ─────────────────────────────────────────────────────────────────
+with t6:
+    st.markdown('<div class="sec">RÈGLES FISCALES DU SIMULATEUR JEANBRUN</div>', unsafe_allow_html=True)
+    st.caption("Synthèse des mécaniques fiscales intégrées au modèle • Document pédagogique")
+
+    # ── 1️⃣ IR
+    st.markdown('<div class="sec blue">1️⃣ IMPÔT SUR LE REVENU — Barème progressif 2026</div>', unsafe_allow_html=True)
+    st.markdown("""
+**📊 Barème progressif par tranches**
+
+L'IR est calculé par application du barème progressif au quotient familial (revenu / nb parts), puis multiplié par le nombre de parts.
+Tranches : 0 % → 11 % → 30 % → 41 % → 45 %.
+
+> *Formule :* `IR = Rev × Taux_tranche − Réduction × Nb_parts`
+> *📖 Art. 197 du CGI • Barème applicable aux revenus 2025 (déclarés en 2026)*
+
+**👨‍👩‍👧 Plafonnement du quotient familial**
+
+L'avantage fiscal procuré par chaque demi-part supplémentaire au-delà de 2 parts est plafonné à **1 759 € par demi-part**. Le simulateur compare l'IR « avec QF » et l'IR « sur 2 parts plafonné » et retient le plus élevé.
+
+> *Formule :* `IR = MAX(IR_QF, IR_2parts − (N−2) × Plafond_QF)`
+> *📖 Art. 197-I-2 du CGI • Plafond 2026 : 1 759 €/demi-part*
+
+**💶 CSG déductible (en N+1)**
+
+La CSG payée sur les revenus fonciers est partiellement déductible du revenu global de l'année suivante, au taux de **6,8 %** de la base soumise aux prélèvements sociaux.
+
+> *Formule :* `CSG_déd(N) = RF_net_taxable(N) × 6,8 % → déduite du revenu global en N+1`
+> *📖 Art. 154 quinquies du CGI*
+""")
+
+    # ── 2️⃣ Revenus fonciers
+    st.markdown('<div class="sec teal">2️⃣ REVENUS FONCIERS — Globalisation & déficit (2044)</div>', unsafe_allow_html=True)
+    st.markdown("""
+**🔗 Globalisation obligatoire des revenus fonciers**
+
+Le résultat foncier se calcule GLOBALEMENT pour l'ensemble du patrimoine locatif du foyer, et non bien par bien. Le simulateur additionne donc les loyers Jeanbrun ET les RF d'autres biens avant d'imputer les charges financières.
+
+> *Formule :* `RF_bruts_globaux = Loyers_Jeanbrun + RF_autres`
+> *📖 Art. 28 à 31 du CGI • Formulaire 2044 ligne 420*
+
+**⚖️ Partition charges financières / non-financières**
+
+En cas de déficit foncier global, le traitement diffère selon la nature des charges excédentaires :
+- Si les RF globaux couvrent les charges financières (Q ≥ R) : le déficit provient des charges non-financières → déductible du revenu global (plafond **10 700 €**).
+- Si les RF globaux ne couvrent PAS les charges financières (Q < R) : l'excédent d'intérêts est reportable sur les RF futurs (10 ans), les charges non-fin. restent déductibles du RG.
+
+> *Formule :* `Déd_RG = MIN(Déficit_charges_non_fin, 10 700)`
+> *📖 Art. 156-I-3° du CGI • BOI-RFPI-BASE-30-20*
+
+**🔄 Déficit reportable sur 10 ans**
+
+L'excédent de déficit non imputable sur le revenu global ainsi que les déficits d'intérêts sont reportables sur les revenus fonciers positifs des **10 années suivantes**. Le stock est géré année par année avec péremption automatique à 10 ans.
+
+> *Formule :* `Stock(N) = Stock(N−1) + Généré(N) − Imputé(N−1) − Périmé(>10 ans)`
+> *📖 Art. 156-I-3° alinéa 4 du CGI*
+
+**💰 Prélèvements sociaux sur RF nets**
+
+Les prélèvements sociaux (17,2 %) s'appliquent sur le revenu foncier net taxable positif. En phase de déficit foncier (RF net ≤ 0), les PS sont nuls.
+
+> *Formule :* `PS = RF_net_taxable × 17,2 % (si positif, sinon 0)`
+> *📖 Art. L. 136-6 du CSS • Taux 2026 : 9,2 % CSG + 0,5 % CRDS + 7,5 % PS*
+""")
+
+    # ── 3️⃣ Dispositif Jeanbrun
+    st.markdown('<div class="sec ora">3️⃣ DISPOSITIF JEANBRUN — Amortissement déductible</div>', unsafe_allow_html=True)
+    st.markdown("""
+**🏗️ Base et taux d'amortissement**
+
+L'amortissement Jeanbrun porte sur **80 % du prix d'acquisition** (hors terrain) à un taux qui dépend du type de loyer pratiqué :
+- Intermédiaire : **3,5 %** → plafond **8 000 €/an**
+- Social : **4,5 %** → plafond **10 000 €/an**
+- Très social : **5,5 %** → plafond **12 000 €/an**
+
+Le plafond est global (tous biens Jeanbrun confondus pour le foyer).
+
+> *Formule :* `Amt = MIN(Base_80% × Taux, Plafond_annuel)`
+> *📖 Art. 12 octies de la LF 2026, créant le i du 1° du I de l'art. 31 du CGI*
+
+**⚡ L'amortissement crée du déficit foncier**
+
+C'est le premier dispositif fiscal permettant l'amortissement en location NUE. L'amortissement Jeanbrun est une charge déductible des revenus fonciers et PEUT générer du déficit foncier imputable sur le revenu global (dans la limite de 10 700 €).
+
+> *📖 Art. 12 octies LF 2026 combiné avec art. 156-I-3° du CGI*
+
+**📋 Engagement locatif**
+
+L'investisseur s'engage à louer le bien nu, à titre de résidence principale du locataire, pendant une durée fixe de **9 ans** (non modulable). Le loyer est plafonné selon le type choisi. Pas de zonage géographique. Seuls les appartements en immeubles collectifs sont éligibles. Acquisitions éligibles : entre la publication de la LFI 2026 et le 31 décembre 2028.
+
+> *📖 Art. 12 octies de la LF 2026 • Engagement 9 ans*
+""")
+
+    # ── 4️⃣ Charges déductibles
+    st.markdown('<div class="sec blue">4️⃣ CHARGES DÉDUCTIBLES — Frais de financement</div>', unsafe_allow_html=True)
+    st.markdown("""
+**🏦 Frais initiaux de financement (Année 1)**
+
+Les frais de dossier bancaire, de garantie et de courtage sont des charges financières intégralement déductibles, l'année de leur paiement (Année 1 uniquement).
+
+> *Formule :* `R(An 1) = Intérêts + Assurance + Frais_garantie_dossier_courtage`
+> *📖 Art. 31-I-1°-d du CGI*
+
+**📈 Intérêts d'emprunt et assurance**
+
+Les intérêts d'emprunt et les primes d'assurance emprunteur constituent les charges financières récurrentes, déductibles chaque année pendant toute la durée du prêt.
+
+> *📖 Art. 31-I-1°-d du CGI*
+""")
+
+    # ── 5️⃣ Plus-value
+    st.markdown('<div class="sec teal">5️⃣ PLUS-VALUE IMMOBILIÈRE — Revente du bien</div>', unsafe_allow_html=True)
+    st.markdown("""
+**🔴 Réintégration de l'amortissement Jeanbrun**
+
+Lors de la revente, l'amortissement cumulé déduit via le Jeanbrun vient MAJORER la plus-value brute (il est soustrait du prix d'acquisition).
+
+> *Formule :* `PV_brute = Prix_vente − (Prix_achat + Frais_forfaitaires − Amt_cumulé)`
+> *📖 Art. 150 VB III du CGI (modifié par art. 12 octies LF 2026)*
+
+**📉 Abattements pour durée de détention**
+
+La PV brute bénéficie d'abattements progressifs : IR (6%/an de la 6e à la 21e, exo à 22 ans) et PS (1,65%/an de la 6e à la 21e, 9%/an de la 23e à la 30e, exo à 30 ans).
+
+> *📖 Art. 150 VC du CGI*
+
+**💸 Imposition : IR 19 % + PS 17,2 % + Surtaxe**
+
+La plus-value nette est soumise à : IR au taux forfaitaire de **19 %**, PS au taux de **17,2 %**, et surtaxe progressive si la PV nette IR dépasse 50 000 € (de 2 % à 6 %).
+
+> *📖 Art. 200 B et 1609 nonies G du CGI*
+""")
+
+    # ── 6️⃣ Abattement 10 %
+    st.markdown('<div class="sec ora">6️⃣ ABATTEMENT 10 % — Frais professionnels</div>', unsafe_allow_html=True)
+    st.markdown(f"""
+**📊 Déduction forfaitaire de 10 %**
+
+- Salaires : `Abatt = MAX(504 × N, MIN(Rev × 10 %, 14 171 × N))`
+- Pensions : `Abatt = MAX(442 × N, MIN(Rev × 10 %, 4 321 × N))`
+- TNS / Indépendants : `Abatt = 0` &nbsp; [N = nb déclarants]
+
+> *📖 Art. 83-3° du CGI (salaires) • Art. 158-5-a du CGI (pensions)*
+""")
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · CGI · Francis Lefebvre · Legifrance</div>', unsafe_allow_html=True)
+
+
+# ─────────────────────────────────────────────────────────────────
+# ONGLET 7 — PLAFONDS LOYERS (fidèle Excel)
+# ─────────────────────────────────────────────────────────────────
+with t7:
+    st.markdown('<div class="sec">PLAFONDS DE LOYERS JEANBRUN (€/m²/mois)</div>', unsafe_allow_html=True)
+
+    st.dataframe(pd.DataFrame([
+        {"Zone": "A bis", "Loyer intermédiaire": 19.51, "Loyer social": 15.61, "Loyer très social": 11.71},
+        {"Zone": "A",     "Loyer intermédiaire": 14.49, "Loyer social": 11.59, "Loyer très social":  8.69},
+        {"Zone": "B1",    "Loyer intermédiaire": 11.68, "Loyer social":  9.34, "Loyer très social":  7.01},
+        {"Zone": "B2/C",  "Loyer intermédiaire": 10.15, "Loyer social":  8.12, "Loyer très social":  6.09},
+    ]), hide_index=True, use_container_width=True)
+
+    st.markdown(f"""
+> **Loyer max légal** = Plafond €/m²/mois × Surface pondérée × Coefficient multiplicateur
+> 
+> **Votre bien :** Surface pondérée = **{fn(res["sp"],1)} m²** · Coefficient = **{fn(res["coeff"],2)}** · Zone = **{zone}** · Type = **{type_loyer}**
+> 
+> **Loyer max légal = {fe(res["lmax"])}/mois** · Loyer retenu = **{fe(res["lmens"])}/mois**
+""")
+
+    st.markdown('<div class="sec teal sm">PLAFONDS D\'AMORTISSEMENT</div>', unsafe_allow_html=True)
+    st.dataframe(pd.DataFrame([
+        {"Type": "Intermédiaire", "Taux": "3,5 %", "Plafond/an": "8 000 €", "Base": "80 % prix acq."},
+        {"Type": "Social",        "Taux": "4,5 %", "Plafond/an": "10 000 €", "Base": "80 % prix acq."},
+        {"Type": "Très social",   "Taux": "5,5 %", "Plafond/an": "12 000 €", "Base": "80 % prix acq."},
+    ]), hide_index=True, use_container_width=True)
+
+    st.markdown('<div class="sec blue sm">COEFFICIENT MULTIPLICATEUR — Art. 2 terdecies D</div>', unsafe_allow_html=True)
+    st.markdown("`Coefficient = TRUNC((0,7 + 19/SP) × 100) / 100` — plafonné à **1,20**")
+    st.markdown(f"> Pour SP = {fn(res['sp'],1)} m² : Coefficient = **{fn(res['coeff'],2)}**")
+
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Art. 2 terdecies D ann. III CGI · Plafonds 2025/2026</div>', unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 8 — BARÈME FISCAL
+# ONGLET 8 — BARÈME FISCAL (fidèle Excel)
 # ─────────────────────────────────────────────────────────────────
 with t8:
-    st.markdown('<div class="sec">📊 BARÈME FISCAL IR 2026 — Art. 197 CGI · Prélèvements sociaux · Simulation</div>', unsafe_allow_html=True)
-    b1, b2 = st.columns([1.5, 2])
-    with b1:
-        st.markdown('<div class="sec blue sm">TRANCHES IR 2026</div>', unsafe_allow_html=True)
-        st.dataframe(pd.DataFrame([
-            {"Tranche (€ / part QF)": "0 à 11 600 €", "Taux": "0 %"},
-            {"Tranche (€ / part QF)": "11 601 à 29 579 €", "Taux": "11 %"},
-            {"Tranche (€ / part QF)": "29 580 à 84 577 €", "Taux": "30 %"},
-            {"Tranche (€ / part QF)": "84 578 à 181 917 €", "Taux": "41 %"},
-            {"Tranche (€ / part QF)": "Au-delà de 181 917 €", "Taux": "45 %"},
-        ]), hide_index=True, use_container_width=True)
-        st.markdown('<div class="sec teal sm">PLAFONNEMENT QF</div>', unsafe_allow_html=True)
-        pr_ref = 2.0 if parts >= 2.0 else 1.0
-        st.markdown(f"""
-| Règle | Valeur |
-|---|---|
-| Plafond par demi-part | **1 759 €** |
-| Parts de référence (couple) | 2,0 parts |
-| Parts de référence (célibataire) | 1,0 part |
+    st.markdown('<div class="sec">BARÈME IMPÔT SUR LE REVENU 2026</div>', unsafe_allow_html=True)
 
-> Vos **{fn(parts,1)} parts** → économie QF plafonnée à **{fe(max(0.0, (parts - pr_ref) * 2 * PLAFOND_QF))}**
-""")
-        st.markdown('<div class="sec ora sm">PRÉLÈVEMENTS SOCIAUX 17,2%</div>', unsafe_allow_html=True)
-        st.markdown("""
-| Prélèvement | Taux |
-|---|---|
-| CSG | 9,2 % |
-| CRDS | 0,5 % |
-| Prélèvement solidarité | 7,5 % |
-| **Total PS** | **17,2 %** |
-| dont CSG déductible (N+1) | **6,8 %** |
-""")
-    with b2:
-        st.markdown('<div class="sec blue sm">AVANT / APRÈS OPÉRATION — ANNÉES CLÉS</div>', unsafe_allow_html=True)
-        avap = []
-        for ad in [1, 2, 3, 5, 9, 12, 15, 20, 25]:
-            a = ann[ad - 1]
-            avap.append({
-                "An": ad,
-                "RN avant": fe(a["rev_total_avant"]),
-                "IR avant": fe(a["ir_av"]),
-                "Base après": fe(a["rev_ap"]),
-                "IR après": fe(a["ir_ap"]),
-                "PS après": fe(a["ps_ap"]),
-                "Éco. fisc.": fe(a["eco"]),
-                "TMI après": fp(a["tmi_apres"]),
-            })
-        st.dataframe(pd.DataFrame(avap), hide_index=True, use_container_width=True)
-        st.markdown('<div class="sec teal sm">CALCUL DÉTAILLÉ — ANNÉE 1</div>', unsafe_allow_html=True)
-        a1 = ann[0]
+    b8a, b8b = st.columns([1.5, 2])
+    with b8a:
+        st.markdown('<div class="sec blue sm">TRANCHES IR</div>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame([
+            {"Limite inf": "0 €", "Limite sup": "11 600 €", "Taux": "0 %", "Réduction": "0 €"},
+            {"Limite inf": "11 600 €", "Limite sup": "29 579 €", "Taux": "11 %", "Réduction": "1 276 €"},
+            {"Limite inf": "29 579 €", "Limite sup": "84 577 €", "Taux": "30 %", "Réduction": "6 896 €"},
+            {"Limite inf": "84 577 €", "Limite sup": "181 917 €", "Taux": "41 %", "Réduction": "16 199 €"},
+            {"Limite inf": "181 917 €", "Limite sup": "∞", "Taux": "45 %", "Réduction": "23 476 €"},
+        ]), hide_index=True, use_container_width=True)
+
         st.markdown(f"""
-| Étape | Montant |
+| Paramètre | Valeur |
 |---|---|
-| Revenus déclarés | {fe(rev)} |
-| − Abattement {type_rev} | −{fe(res["ab"])} |
-| = Revenus nets | **{fe(res["rn"])}** |
-| + RF autres biens | +{fe(rfa)} |
-| + Déduction sur RG (déficit foncier) | {fe(a1["ded"])} |
-| − CSG déductible N-1 | 0 € (an 1) |
-| **= Base imposable après opération** | **{fe(a1["rev_ap"])}** |
-| IR avant | {fe(a1["ir_av"])} |
-| IR après | {fe(a1["ir_ap"])} |
-| PS avant (sur RF autres biens) | {fe(max(0.0, rfa) * TAUX_PS)} |
-| PS après (sur RF net taxable {fe(a1["rfnt"])}) | {fe(a1["ps_ap"])} |
-| **Économie fiscale totale an 1** | **{fe(a1["eco"])}** |
+| Plafond QF (€/demi-part) | **1 759 €** |
+| Plafond déficit foncier RG | **10 700 €** |
+| Taux CSG déductible | **6,8 %** |
+| Plafond abatt. 10 % salaires | **14 171 €/déclarant** |
+| Plancher abatt. 10 % salaires | **504 €/déclarant** |
+| Plafond abatt. 10 % pensions | **4 321 €/déclarant** |
+| Plancher abatt. 10 % pensions | **442 €/déclarant** |
 """)
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Barème IR 2026 (art. 197 CGI) · Plafonnement QF 1 759 €/demi-part</div>', unsafe_allow_html=True)
+
+    with b8b:
+        st.markdown('<div class="sec ora sm">SURTAXE PLUS-VALUE IMMOBILIÈRE</div>', unsafe_allow_html=True)
+        st.dataframe(pd.DataFrame([
+            {"PV nette IR min": "0 €", "PV nette IR max": "50 000 €", "Taux": "0 %", "Lissage": "—"},
+            {"PV nette IR min": "50 001 €", "PV nette IR max": "60 000 €", "Taux": "2 %", "Lissage": "(60000−PV)×1/20"},
+            {"PV nette IR min": "60 001 €", "PV nette IR max": "100 000 €", "Taux": "2 %", "Lissage": "—"},
+            {"PV nette IR min": "100 001 €", "PV nette IR max": "110 000 €", "Taux": "3 %", "Lissage": "(110000−PV)×1/10"},
+            {"PV nette IR min": "110 001 €", "PV nette IR max": "150 000 €", "Taux": "3 %", "Lissage": "—"},
+            {"PV nette IR min": "150 001 €", "PV nette IR max": "160 000 €", "Taux": "4 %", "Lissage": "(160000−PV)×3/20"},
+            {"PV nette IR min": "160 001 €", "PV nette IR max": "200 000 €", "Taux": "4 %", "Lissage": "—"},
+            {"PV nette IR min": "200 001 €", "PV nette IR max": "210 000 €", "Taux": "5 %", "Lissage": "(210000−PV)×1/5"},
+            {"PV nette IR min": "210 001 €", "PV nette IR max": "250 000 €", "Taux": "5 %", "Lissage": "—"},
+            {"PV nette IR min": "250 001 €", "PV nette IR max": "260 000 €", "Taux": "6 %", "Lissage": "(260000−PV)×1/4"},
+            {"PV nette IR min": "260 001 €", "PV nette IR max": "∞", "Taux": "6 %", "Lissage": "—"},
+        ]), hide_index=True, use_container_width=True)
+
+        st.markdown('<div class="sec teal sm">ABATTEMENTS DURÉE DE DÉTENTION (IR / PS)</div>', unsafe_allow_html=True)
+        abr = []
+        for yr in range(1, 31):
+            ai_v = abatt_ir_pv(yr); ap_v = abatt_ps_pv(yr)
+            abr.append({"An": yr, "Abatt. IR": fp(ai_v), "IR résiduel": fp(1 - ai_v),
+                         "Abatt. PS": fp(ap_v), "PS résiduelle": fp(1 - ap_v)})
+        st.dataframe(pd.DataFrame(abr), hide_index=True, use_container_width=True, height=400)
+
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Art. 197, 200 B, 1609 nonies G du CGI</div>', unsafe_allow_html=True)
 
 
 # ─────────────────────────────────────────────────────────────────
-# ONGLET 9 — TABLEAU D'AMORTISSEMENT
+# ONGLET 9 — TABLEAU D'AMORTISSEMENT (fidèle Excel)
 # ─────────────────────────────────────────────────────────────────
 with t9:
-    st.markdown('<div class="sec">💰 TABLEAU D\'AMORTISSEMENT FINANCIER — Prêt immobilier</div>', unsafe_allow_html=True)
+    st.markdown('<div class="sec">TABLEAU D\'AMORTISSEMENT FINANCIER</div>', unsafe_allow_html=True)
+
     ta1, ta2 = st.columns([2.5, 1.5])
     with ta2:
-        st.markdown('<div class="sec blue sm">CARACTÉRISTIQUES DU PRÊT</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sec blue sm">PARAMÈTRES DU FINANCEMENT</div>', unsafe_allow_html=True)
         st.markdown(f"""
 | Paramètre | Valeur |
 |---|---|
-| Capital emprunté | **{fe(res["mempr"])}** |
+| Montant emprunté | **{fe(res["mempr"])}** |
 | Taux nominal annuel | **{fp(ti)}** |
-| Durée | **{duree} ans ({duree*12} mois)** |
-| Mensualité (hors assurance) | **{fe(res["mens_tot"] - res["mempr"] * ta / 12)}** |
-| Assurance mensuelle | {fe(res["mempr"] * ta / 12)} |
-| **Mensualité totale** | **{fe(res["mens_tot"])}** |
-| Coût total crédit | {fe(res["mens_tot"] * duree * 12 - res["mempr"])} |
+| Durée | **{duree} ans** |
+| Taux assurance annuel | **{fp(ta)}** |
 """)
-        st.markdown(f'<div class="sec teal sm">AMORTISSEMENT JEANBRUN ({duree_amort} ANS)</div>', unsafe_allow_html=True)
+        st.markdown('<div class="sec teal sm">RÉSULTATS CLÉS</div>', unsafe_allow_html=True)
+        cout_credit = res["mens_tot"] * duree * 12 - res["mempr"]
+        cout_int = sum(r["int"] for r in res["amttab"])
+        cout_ass = res["mempr"] * ta / 12 * 12 * duree
         st.markdown(f"""
-| Paramètre | Valeur |
+| Résultat | Valeur |
 |---|---|
-| Base (80% prix acq.) | **{fe(res["base_a"])}** |
-| Type de loyer | **{type_loyer}** |
-| Taux d'amortissement | **{fp(TAUX_AMT[type_loyer])}** |
-| Plafond annuel | **{fe(PLAF_AMT[type_loyer])}** |
-| **Amortissement retenu** | **{fe(res["amort_an"])}/an** |
-| **Durée** | **{duree_amort} ans** |
-| **Cumul total ({duree_amort} ans)** | **{fe(res["amort_an"] * duree_amort)}** |
-| Économie fiscale an 1 | {fe(res["eco1"])} |
+| Mensualité hors assurance | **{fe(res["mens_tot"] - res["mempr"]*ta/12)}** |
+| Mensualité assurance | **{fe(res["mempr"]*ta/12)}** |
+| **Mensualité totale** | **{fe(res["mens_tot"])}** |
+| Coût total du crédit | **{fe(cout_credit)}** |
+| Coût total intérêts | **{fe(cout_int)}** |
+| Coût total assurance | **{fe(cout_ass)}** |
 """)
-    with ta1:
-        vue = st.radio("Afficher :", ["Tableau annuel", "Tableau mensuel (3 premières années)"], horizontal=True)
-        if vue == "Tableau annuel":
-            st.markdown('<div class="sec blue sm">AMORTISSEMENT ANNUEL DU PRÊT</div>', unsafe_allow_html=True)
-            ar = []
-            for i, row in enumerate(res["amttab"]):
-                ic = sum(r["int"] for r in res["amttab"][:i + 1])
-                pc = sum(r["princ"] for r in res["amttab"][:i + 1])
-                ar.append({
-                    "An": i + 1,
-                    "Capital amorti": fe(row["princ"]),
-                    "Intérêts": fe(row["int"]),
-                    "Assurance": fe(res["mempr"] * ta / 12 * 12),
-                    "Total remboursé": fe(row["princ"] + row["int"] + res["mempr"] * ta / 12 * 12),
-                    "CRD fin d'an": fe(row["crd"]),
-                    "Intérêts cumulés": fe(ic),
-                    "Capital remb. %": fp(pc / res["mempr"]),
-                })
-            st.dataframe(pd.DataFrame(ar), hide_index=True, use_container_width=True, height=520)
-        else:
-            st.markdown('<div class="sec teal sm">TABLEAU MENSUEL — 3 PREMIÈRES ANNÉES</div>', unsafe_allow_html=True)
-            mr = []
-            for r_m in res["rows_m"][:36]:
-                mr.append({
-                    "Mois": r_m["mois"],
-                    "Intérêts": fe(r_m["im"]),
-                    "Capital": fe(r_m["pm"]),
-                    "Assurance": fe(res["mempr"] * ta / 12),
-                    "Total": fe(r_m["im"] + r_m["pm"] + res["mempr"] * ta / 12),
-                    "CRD": fe(r_m["crd"]),
-                })
-            st.dataframe(pd.DataFrame(mr), hide_index=True, use_container_width=True, height=520)
 
-        # Graphique amortissement prêt
+    with ta1:
+        st.markdown('<div class="sec blue sm">TABLEAU D\'AMORTISSEMENT ANNUEL</div>', unsafe_allow_html=True)
+        ar = []
+        for i, row in enumerate(res["amttab"]):
+            ass_an = res["mempr"] * ta / 12 * 12
+            ar.append({
+                "N°": i + 1,
+                "Année": i + 1,
+                "Principal (€)": round(row["princ"], 2),
+                "Intérêts (€)": round(row["int"], 2),
+                "Assurance (€)": round(ass_an, 2),
+                "Annuité totale (€)": round(row["princ"] + row["int"] + ass_an, 2),
+                "CRD (€)": round(row["crd"], 2),
+            })
+        df_amt = pd.DataFrame(ar)
+        # Totaux
+        totals_amt = {
+            "N°": "", "Année": "TOTAUX",
+            "Principal (€)": round(sum(r["princ"] for r in res["amttab"]), 2),
+            "Intérêts (€)": round(cout_int, 2),
+            "Assurance (€)": round(cout_ass, 2),
+            "Annuité totale (€)": round(sum(r["princ"] + r["int"] for r in res["amttab"]) + cout_ass, 2),
+        }
+        df_amt_show = pd.concat([df_amt, pd.DataFrame([totals_amt])], ignore_index=True)
+        st.dataframe(df_amt_show, hide_index=True, use_container_width=True, height=560)
+
+        # Graphique amortissement
         st.markdown('<div class="sec teal sm no-print">📊 DÉCOMPOSITION ANNUELLE</div>', unsafe_allow_html=True)
-        st.pyplot(fig_amort_pret(res["amttab"], res["mempr"], ta))
+        chart_amort_pret(res["amttab"], res["mempr"], ta)
+
+    # Vue mensuelle optionnelle
+    with st.expander("📋 Tableau mensuel (3 premières années)"):
+        mr = []
+        for r_m in res["rows_m"][:36]:
+            mr.append({
+                "Mois": r_m["mois"],
+                "Intérêts": round(r_m["im"], 2),
+                "Capital": round(r_m["pm"], 2),
+                "Assurance": round(res["mempr"] * ta / 12, 2),
+                "Total": round(r_m["im"] + r_m["pm"] + res["mempr"] * ta / 12, 2),
+                "CRD": round(r_m["crd"], 2),
+            })
+        st.dataframe(pd.DataFrame(mr), hide_index=True, use_container_width=True, height=520)
 
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Calcul mensuel exact agrégé annuellement</div>', unsafe_allow_html=True)
 
@@ -1544,13 +1592,11 @@ with t10:
     st.markdown('<div class="sec">🖨️ IMPRESSION A4 PORTRAIT</div>', unsafe_allow_html=True)
     st.markdown("""
 **Procédure d'impression :**
-1. Allez sur l'onglet souhaité — **Synthèse visuelle**, **Simplifiée**, **Détaillée** ou **Revente & Plus-value**
+1. Allez sur l'onglet souhaité
 2. Cliquez sur le bouton ci-dessous (ou **Ctrl+P** / **Cmd+P**)
 3. Sélectionnez **Format : A4 · Orientation : Portrait**
 4. Cochez « Graphiques d'arrière-plan » pour conserver les couleurs
 5. Décochez les en-têtes/pieds de page du navigateur
-
-> **Note :** Les onglets de navigation, la barre latérale et les graphiques interactifs sont automatiquement masqués à l'impression. Le contenu de l'onglet actif s'imprime en A4 portrait compact.
 """)
     components.html("""<style>@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@600&display=swap');</style>
     <button onclick="window.parent.print();" style="
@@ -1561,9 +1607,8 @@ with t10:
       🖨️ Imprimer cet onglet (A4 Portrait)
     </button>""", height=70)
     st.markdown("---")
-    st.caption(f"**Moteur de calcul V11 :** Python natif · Fidélité Excel V9 · 49 colonnes · "
-               f"Amortissement Jeanbrun sur {duree_amort} ans (art. 2 quindecies B) · "
-               "Barème IR 2026 avec plafonnement QF (1 759 €/demi-part) · "
-               "Déficits fonciers art. 156-I-3 CGI · TRI investisseur · CSG déductible N+1 · "
+    st.caption(f"**Moteur V11 :** Python natif · Fidélité Excel V9 · 49 colonnes · "
+               f"Amortissement Jeanbrun sur {duree_amort} ans · "
+               "Barème IR 2026 · QF 1 759 €/demi-part · Déficits art. 156-I-3 CGI · TRI · CSG déd. N+1 · "
                "Document non contractuel")
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · www.medicis-immobilier-neuf.fr · Outil réservé aux conseillers</div>', unsafe_allow_html=True)
