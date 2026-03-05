@@ -36,30 +36,71 @@ st.markdown("""<style>
 /* ══════ SIDEBAR ══════ */
 [data-testid="stSidebar"]{background:var(--dark)!important}
 
-/* Tous les textes sidebar en blanc */
-[data-testid="stSidebar"] *:not(input):not(select):not(button)
+/* ── Tous les textes sidebar en blanc ── */
+[data-testid="stSidebar"],
+[data-testid="stSidebar"] *,
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] p,
+[data-testid="stSidebar"] span,
+[data-testid="stSidebar"] div,
+[data-testid="stSidebar"] small,
+[data-testid="stSidebar"] .stMarkdown,
+[data-testid="stSidebar"] .stMarkdown *
   {color:#ffffff!important}
 
-/* Inputs sidebar : fond semi-transparent + TEXTE VISIBLE */
+/* ── Inputs numériques et texte : FOND BLANC, TEXTE SOMBRE ── */
+/* Stratégie : fond blanc pour une lisibilité parfaite */
 [data-testid="stSidebar"] input,
 [data-testid="stSidebar"] input[type="number"],
-[data-testid="stSidebar"] input[type="text"]{
-  background:rgba(255,255,255,.15)!important;
-  color:#ffffff!important;
-  -webkit-text-fill-color:#ffffff!important;
-  caret-color:#ffffff!important;
-  border:1px solid rgba(255,255,255,.3)!important;
+[data-testid="stSidebar"] input[type="text"],
+[data-testid="stSidebar"] .stNumberInput input,
+[data-testid="stSidebar"] [data-baseweb="input"] input,
+[data-testid="stSidebar"] [data-baseweb="base-input"] input{
+  background:#ffffff!important;
+  color:#14415C!important;
+  -webkit-text-fill-color:#14415C!important;
+  caret-color:#14415C!important;
+  border:2px solid rgba(255,255,255,.6)!important;
+  border-radius:6px!important;
+  font-weight:600!important;
+}
+
+/* ── Wrapper des inputs (fond + bordure) ── */
+[data-testid="stSidebar"] [data-baseweb="input"],
+[data-testid="stSidebar"] [data-baseweb="base-input"],
+[data-testid="stSidebar"] .stNumberInput [data-baseweb="input"]{
+  background:#ffffff!important;
+  border-radius:6px!important;
+  border:2px solid rgba(255,255,255,.5)!important;
+}
+
+/* ── Selectbox sidebar : fond blanc, texte sombre ── */
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] div,
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] span,
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] input,
+[data-testid="stSidebar"] [data-baseweb="select"] [data-baseweb="value"],
+[data-testid="stSidebar"] [data-baseweb="select"] div[class*="ValueContainer"] span{
+  color:#14415C!important;
+  -webkit-text-fill-color:#14415C!important;
+  background:#ffffff!important;
+  font-weight:600!important;
+}
+[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"]>div,
+[data-testid="stSidebar"] [data-baseweb="select"]>div{
+  background:#ffffff!important;
+  border:2px solid rgba(255,255,255,.5)!important;
   border-radius:6px!important;
 }
-[data-testid="stSidebar"] input::placeholder
-  {color:rgba(255,255,255,.5)!important;-webkit-text-fill-color:rgba(255,255,255,.5)!important}
 
-/* Selectbox sidebar */
-[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] div,
-[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"] span
-  {color:#ffffff!important;-webkit-text-fill-color:#ffffff!important;background:rgba(255,255,255,.15)!important}
-[data-testid="stSidebar"] .stSelectbox [data-baseweb="select"]>div
-  {border:1px solid rgba(255,255,255,.3)!important;border-radius:6px!important}
+/* ── Labels au-dessus des inputs : BLANC ── */
+[data-testid="stSidebar"] label,
+[data-testid="stSidebar"] label *,
+[data-testid="stSidebar"] .stNumberInput label,
+[data-testid="stSidebar"] .stSelectbox label{
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+  font-weight:500!important;
+}
 
 /* Bouton principal sidebar */
 [data-testid="stSidebar"] .stButton>button{
