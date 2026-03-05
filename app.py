@@ -102,6 +102,35 @@ st.markdown("""<style>
   font-weight:500!important;
 }
 
+/* ── Expanders (titres de section) dans sidebar ── */
+[data-testid="stSidebar"] details summary,
+[data-testid="stSidebar"] details summary p,
+[data-testid="stSidebar"] details summary span,
+[data-testid="stSidebar"] details summary div,
+[data-testid="stSidebar"] .stExpander details summary *,
+[data-testid="stSidebar"] [data-testid="stExpander"] summary,
+[data-testid="stSidebar"] [data-testid="stExpander"] summary *{
+  color:#ffffff!important;
+  -webkit-text-fill-color:#ffffff!important;
+  font-weight:600!important;
+}
+[data-testid="stSidebar"] details,
+[data-testid="stSidebar"] .stExpander,
+[data-testid="stSidebar"] [data-testid="stExpander"]{
+  background:rgba(255,255,255,.07)!important;
+  border:1px solid rgba(255,255,255,.18)!important;
+  border-radius:8px!important;
+  margin-bottom:.4rem!important;
+}
+[data-testid="stSidebar"] details summary:hover{
+  background:rgba(255,255,255,.12)!important;
+  border-radius:6px!important;
+}
+/* Flèche de l'expander */
+[data-testid="stSidebar"] details summary svg{
+  fill:#ffffff!important;stroke:#ffffff!important;
+}
+
 /* Bouton principal sidebar */
 [data-testid="stSidebar"] .stButton>button{
   background:var(--ora)!important;color:#fff!important;border:none!important;
@@ -625,7 +654,7 @@ with t1:
         (k5,"Éco. fiscale an 1",    fe(res["eco1"]),   "déficit + Jeanbrun","o"),
         (k6,"Amort. Jeanbrun/an",   fe(res["amort_an"]),f"{fe(res['base_a'])} × {fp(TAUX_AMT[type_loyer])} · plaf. {fe(PLAF_AMT[type_loyer])}","l"),
     ]
-    for col,(lbl,val,sub,cls) in kdata:
+    for col,lbl,val,sub,cls in kdata:
         with col:
             st.markdown(f'<div class="kpi {cls}"><div class="kpi-lbl">{lbl}</div>'
                         f'<div class="kpi-val">{val}</div>'
