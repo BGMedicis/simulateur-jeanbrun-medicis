@@ -928,33 +928,68 @@ with t1:
                         f'<div class="kpi-val">{val}</div>'
                         f'<div class="kpi-sub">{sub}</div></div>', unsafe_allow_html=True)
 
-    # ── Comptes en T (rows 9-21 Excel)
+    # ── Comptes en T (fidèle layout Excel — gros chiffres + tableau structuré)
     st.markdown('<div class="sec">📊 COMPTE EN T · Moyennes mensuelles calculées sur chaque horizon</div>', unsafe_allow_html=True)
 
-    def cnt_html(h, label, yrs, bg, bc, icon):
+    def cnt_html(h, n_ans, subtitle, bg, bc, bc_light, icon):
         ef = h["ef"]; ec = "#EA653D" if ef < 0 else "#009FA3"
-        le = "Reste à charge / mois" if ef < 0 else "Cashflow positif / mois"
-        return f"""<div class="cnt" style="background:{bg};border-top-color:{bc}">
-          <div style="font-weight:700;color:#14415C;font-size:.88rem;margin-bottom:.6rem">
-            {icon} {label} — <span style="color:{bc}">{yrs}</span></div>
-          <table class="cnt-tbl">
-            <tr><td class="hd" style="color:#009FA3">✚ CE QUI RENTRE</td>
-                <td class="hd" style="color:#EA653D">− CE QUI SORT</td></tr>
-            <tr><td>Loyers moy. <b>{fe(h['lm'])}</b></td><td>Crédit <b>{fe(h['cm'])}</b></td></tr>
-            <tr><td>Gain fiscal <b>{fe(h['gm'])}</b></td><td>Charges <b>{fe(h['chm'])}</b></td></tr>
-            <tr class="sep"><td>Total <b>{fe(h['te'])}</b></td><td>Total <b>{fe(h['ts'])}</b></td></tr>
-          </table>
-          <div class="cnt-tot"><div style="font-size:.64rem;color:#888;text-transform:uppercase;letter-spacing:.06em">{le}</div>
-            <div style="font-size:1.2rem;font-weight:800;color:{ec}">{fe(abs(ef))}/mois</div></div>
-          <div class="cnt-bil">
-            Capital net si prix vente = prix d'achat · dont {fe(h['dont_j'])} via Jeanbrun<br>
-            <b style="font-size:1.05rem;color:{bc}">{fe(h['cap0'])}</b>
-          </div></div>"""
+        return f"""<div style="border-radius:10px;overflow:hidden;border:1px solid #d0d0d0;height:100%;box-shadow:0 2px 8px rgba(0,0,0,.06)">
+          <!-- HEADER gradient -->
+          <div style="background:linear-gradient(135deg,{bc} 0%,{bc_light} 100%);padding:.65rem .9rem;text-align:center">
+            <div style="display:flex;align-items:baseline;justify-content:center;gap:.3rem">
+              <span style="font-size:2.4rem;font-weight:800;color:#fff;text-shadow:0 1px 3px rgba(0,0,0,.15)">{n_ans}</span>
+              <span style="font-size:1rem;font-weight:700;color:rgba(255,255,255,.9)">ans</span>
+            </div>
+            <div style="font-size:.78rem;color:rgba(255,255,255,.85);font-weight:500">{subtitle}</div>
+          </div>
+          <!-- TABLEAU -->
+          <div style="padding:.55rem .75rem .25rem">
+            <table style="width:100%;border-collapse:collapse;font-size:.84rem">
+              <tr>
+                <td style="font-weight:700;color:#009FA3;font-size:.72rem;padding-bottom:.3rem;letter-spacing:.04em">+ CE QUI RENTRE</td>
+                <td></td>
+                <td style="font-weight:700;color:#EA653D;font-size:.72rem;padding-bottom:.3rem;letter-spacing:.04em">− CE QUI SORT</td>
+                <td></td>
+              </tr>
+              <tr style="border-bottom:1px solid #ebebeb">
+                <td style="padding:.2rem 0;color:#444">Loyers moy.</td>
+                <td style="padding:.2rem 0;font-weight:800;color:#14415C;text-align:right">{fe(h['lm'])}</td>
+                <td style="padding:.2rem 0;color:#444">Crédit</td>
+                <td style="padding:.2rem 0;font-weight:800;color:#14415C;text-align:right">{fe(h['cm'])}</td>
+              </tr>
+              <tr style="border-bottom:1px solid #ebebeb">
+                <td style="padding:.2rem 0;color:#444">Gain fiscal</td>
+                <td style="padding:.2rem 0;font-weight:800;color:#14415C;text-align:right">{fe(h['gm'])}</td>
+                <td style="padding:.2rem 0;color:#444">Charges</td>
+                <td style="padding:.2rem 0;font-weight:800;color:#14415C;text-align:right">{fe(h['chm'])}</td>
+              </tr>
+              <tr style="background:rgba(0,0,0,.04);border-top:2.5px solid {bc}">
+                <td style="padding:.3rem 0;font-weight:700;color:{bc}">Total</td>
+                <td style="padding:.3rem 0;font-weight:800;color:{bc};text-align:right;font-size:.9rem">{fe(h['te'])}</td>
+                <td style="padding:.3rem 0;font-weight:700;color:{bc}">Total</td>
+                <td style="padding:.3rem 0;font-weight:800;color:{bc};text-align:right;font-size:.9rem">{fe(h['ts'])}</td>
+              </tr>
+            </table>
+          </div>
+          <!-- EFFORT -->
+          <div style="background:{bg};margin:.25rem .65rem;border-radius:8px;padding:.55rem .6rem;text-align:center;border:1px solid rgba(0,0,0,.05)">
+            <div style="font-size:.6rem;color:#888;text-transform:uppercase;letter-spacing:.07em;font-weight:600">Effort d'épargne mensuel moyen</div>
+            <div style="font-size:1.55rem;font-weight:800;color:{ec};line-height:1.2;margin:.1rem 0">{fe(abs(ef))}<span style="font-size:.8rem;font-weight:600">/mois</span></div>
+            <div style="font-size:.63rem;color:#aaa;font-style:italic">← Reste à charge réel après loyers et économie fiscale</div>
+          </div>
+          <!-- CAPITAL NET -->
+          <div style="padding:.45rem .7rem .7rem;text-align:center">
+            <div style="font-size:.73rem;color:#555;line-height:1.5">
+              Capital net si prix vente = prix d'achat · dont <b style="color:{bc}">{fe(h['dont_j'])}</b> via Jeanbrun
+            </div>
+            <div style="font-size:1.6rem;font-weight:800;color:{bc};margin-top:.15rem;text-shadow:0 1px 2px rgba(0,0,0,.05)">{fe(h['cap0'])}</div>
+          </div>
+        </div>"""
 
     c9, c15, c25 = st.columns(3)
-    with c9:  st.markdown(cnt_html(res["h9"], "Fin d'engagement", "9 ans", "#EEF2FB", "#3761AD", "🔹"), unsafe_allow_html=True)
-    with c15: st.markdown(cnt_html(res["h15"], "★ Horizon de référence", "15 ans", "#E4F5F5", "#009FA3", "🔸"), unsafe_allow_html=True)
-    with c25: st.markdown(cnt_html(res["h25"], "Financement soldé", "25 ans", "#FEF0EC", "#EA653D", "⭐"), unsafe_allow_html=True)
+    with c9:  st.markdown(cnt_html(res["h9"], 9, "Fin durée d'engagement", "#EEF2FB", "#3761AD", "#5a8ad4", "🔹"), unsafe_allow_html=True)
+    with c15: st.markdown(cnt_html(res["h15"], 15, "★ Horizon de référence", "#E4F5F5", "#009FA3", "#33c2c5", "🔸"), unsafe_allow_html=True)
+    with c25: st.markdown(cnt_html(res["h25"], 25, "Financement soldé · Pleine propriété", "#FEF0EC", "#EA653D", "#f5916e", "⭐"), unsafe_allow_html=True)
 
     # ── Graphique interactif capital net (rows 23-38 Excel = chart)
     st.markdown('<div class="sec no-print">📈 Capital net constitué par année de détention (Valeur revente − CRD − impôt PV) · 0% et 1,5%</div>', unsafe_allow_html=True)
