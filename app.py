@@ -220,6 +220,10 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
   font-size:.68rem;color:#aaa;text-align:center;font-style:italic}
 .footer b{color:var(--blue)}
 
+/* ══════ SCREEN-ONLY / PRINT-ONLY ══════ */
+.screen-only{display:block}
+.print-only{display:none}
+
 /* ══════ LOGIN ══════ */
 .login-card{background:#fff;border-radius:16px;box-shadow:0 8px 40px rgba(20,65,92,.15);
   padding:2.2rem 2rem;text-align:center;margin-top:4rem}
@@ -242,9 +246,12 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
   .stTabs [data-baseweb="tab-list"],
   button,.stDownloadButton,.no-print,
   .stExpander,
-  [data-testid="collapsedControl"],
-  iframe
+  [data-testid="collapsedControl"]
     {display:none!important;visibility:hidden!important}
+
+  /* Masquer uniquement les iframes du bouton imprimer (components.html), pas les graphiques */
+  .element-container:has(iframe[height="70"]),
+  .element-container iframe[height="70"]{display:none!important}
 
   html,body,.stApp{background:#fff!important;margin:0!important;padding:0!important}
   .main .block-container{padding:0 .5cm!important;max-width:100%!important;margin:0!important}
@@ -284,7 +291,7 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
   .cnt-tbl td{padding:.1rem .12rem!important}
   .cnt-bil{font-size:.58rem!important;padding:.2rem .3rem!important;line-height:1.4!important}
   .cnt-tot{padding:.25rem .35rem!important}
-  .ped{padding:.3rem .5rem!important}
+  .ped{display:none!important}
   .ped-ico{font-size:1rem!important;margin-bottom:.1rem!important}
   .ped-tit{font-size:.7rem!important;margin-bottom:.1rem!important}
   .ped-txt{font-size:.58rem!important}
@@ -292,8 +299,11 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
   table{font-size:.62rem!important}
   td,th{padding:.12rem .2rem!important}
 
-  /* Graphiques : masquer en impression (trop de place) */
-  .stPlotlyChart,.stPyplot{display:none!important}
+  /* Graphiques : Plotly (screen-only) masqué, matplotlib (print-only) affiché */
+  .screen-only,.stPlotlyChart{display:none!important}
+  .print-only{display:block!important}
+  .stPyplot{max-height:180px!important;overflow:hidden!important}
+  .stPyplot img{max-height:180px!important;width:100%!important}
 
   /* Couleurs préservées */
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -775,26 +785,26 @@ with st.sidebar:
 
     # ── SECTION 1 : Bien immobilier ──
     st.markdown('<div class="sidebar-section">🏠 BIEN IMMOBILIER</div>', unsafe_allow_html=True)
-    prix      = st.number_input("Prix d'acquisition (€)", 50_000, 5_000_000, 260_000, 1_000, format="%d")
+    prix      = st.number_input("Prix d'acquisition (€)", min_value=0, max_value=5_000_000, value=None, step=1_000, format="%d", placeholder="Ex : 260 000")
     frais_pct = st.number_input("Frais d'acquisition (%)", 0.0, 15.0, 3.0, 0.1, format="%.1f") / 100
-    surf      = st.number_input("Surface habitable (m²)", 5.0, 500.0, 40.0, 0.5, format="%.1f")
+    surf      = st.number_input("Surface habitable (m²)", min_value=0.0, max_value=500.0, value=None, step=0.5, format="%.1f", placeholder="Ex : 40")
     zone      = st.selectbox("Zone Jeanbrun", ["A bis", "A", "B1", "B2", "C"], index=1)
     rdc       = st.selectbox("Rez-de-chaussée ?", ["NON", "OUI"])
-    balcon    = st.number_input("Surface balcon (m²)", 0.0, 200.0, 15.0, 0.5, format="%.1f")
+    balcon    = st.number_input("Surface balcon (m²)", 0.0, 200.0, 0.0, 0.5, format="%.1f")
     terrasse  = st.number_input("Surface terrasse (m²)", 0.0, 300.0, 0.0, 0.5, format="%.1f")
 
     # ── SECTION 2 : Financement ──
     st.markdown('<div class="sidebar-section">💳 FINANCEMENT</div>', unsafe_allow_html=True)
-    apport = st.number_input("Apport (€)", 0, 2_000_000, 15_000, 500, format="%d")
+    apport = st.number_input("Apport (€)", min_value=0, max_value=2_000_000, value=None, step=500, format="%d", placeholder="Ex : 15 000")
     ti     = st.number_input("Taux intérêt (%/an)", 0.0, 10.0, 3.3, 0.05, format="%.2f") / 100
     ta     = st.number_input("Taux assurance (%/an)", 0.0, 3.0, 0.35, 0.01, format="%.2f") / 100
     duree  = st.number_input("Durée crédit (ans)", 5, 30, 25, 1)
-    fg     = st.number_input("Frais garantie + dossier (€)", 0, 20_000, 4_000, 100, format="%d")
+    fg     = st.number_input("Frais garantie + dossier (€)", 0, 20_000, 0, 100, format="%d")
 
     # ── SECTION 3 : Revenus locatifs ──
     st.markdown('<div class="sidebar-section">🏘️ REVENUS LOCATIFS</div>', unsafe_allow_html=True)
     type_loyer = st.selectbox("Type de loyer", ["Loyer intermédiaire", "Loyer social", "Loyer très social"])
-    ls         = st.number_input("Loyer souhaité (€/mois)", 100, 5_000, 750, 10, format="%d")
+    ls         = st.number_input("Loyer souhaité (€/mois)", min_value=0, max_value=5_000, value=None, step=10, format="%d", placeholder="Ex : 750")
     il         = st.number_input("Indexation loyers (%/an)", 0.0, 5.0, 1.5, 0.1, format="%.1f") / 100
     cp         = st.number_input("Charges + TF (% loyers bruts)", 0.0, 60.0, 30.0, 1.0, format="%.0f") / 100
     duree_amort = st.number_input("Durée amortissement JB (ans)", 1, 25, 25, 1,
@@ -804,8 +814,8 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section">👤 SITUATION FISCALE</div>', unsafe_allow_html=True)
     type_rev = st.selectbox("Type de revenus principaux",
         ["Salaires (abatt. 10%)", "Pensions / Retraites (abatt. 10%)", "BNC / BIC / autres"])
-    rev   = st.number_input("Revenus déclarés (€/an)", 0, 2_000_000, 95_000, 1_000, format="%d")
-    rfa   = st.number_input("RF autres biens (€/an)", 0, 500_000, 5_000, 500, format="%d")
+    rev   = st.number_input("Revenus déclarés (€/an)", min_value=0, max_value=2_000_000, value=None, step=1_000, format="%d", placeholder="Ex : 95 000")
+    rfa   = st.number_input("RF autres biens (€/an)", 0, 500_000, 0, 500, format="%d")
     parts = st.number_input("Parts fiscales", 1.0, 10.0, 2.5, 0.5, format="%.1f")
     nd    = st.number_input("Nb déclarants", 1, 2, 2, 1)
 
@@ -816,14 +826,31 @@ with st.sidebar:
 # ── Calcul
 if "res" not in st.session_state:
     st.session_state.res = None
+
+# Normaliser les champs None → 0 pour la simulation
+prix_v = prix if prix is not None else 0
+surf_v = surf if surf is not None else 0.0
+apport_v = apport if apport is not None else 0
+ls_v = ls if ls is not None else 0
+rev_v = rev if rev is not None else 0
+
 if go:
-    with st.spinner("⚙️ Calcul en cours…"):
-        st.session_state.res = run(
-            prix, frais_pct, surf, zone, rdc, balcon, terrasse,
-            apport, ti, ta, duree, fg,
-            type_loyer, ls, il, cp, type_rev, rev, rfa, parts, nd,
-            duree_engagement=duree_amort,
-        )
+    # Validation des champs obligatoires
+    champs_manquants = []
+    if prix_v <= 0: champs_manquants.append("Prix d'acquisition")
+    if surf_v <= 0: champs_manquants.append("Surface habitable")
+    if ls_v <= 0:   champs_manquants.append("Loyer souhaité")
+    if rev_v <= 0:  champs_manquants.append("Revenus déclarés")
+    if champs_manquants:
+        st.error(f"⚠️ Veuillez renseigner : **{', '.join(champs_manquants)}**")
+    else:
+        with st.spinner("⚙️ Calcul en cours…"):
+            st.session_state.res = run(
+                prix_v, frais_pct, surf_v, zone, rdc, balcon, terrasse,
+                apport_v, ti, ta, duree, fg,
+                type_loyer, ls_v, il, cp, type_rev, rev_v, rfa, parts, nd,
+                duree_engagement=duree_amort,
+            )
 res = st.session_state.res
 
 # ── Header
@@ -868,12 +895,14 @@ except ImportError:
 _chart_counter = [0]   # mutable counter for unique keys
 
 def chart_capital_net(ann_data):
-    """Graphique capital net (0 % et +1,5 %) — interactif si plotly dispo."""
+    """Graphique capital net (0 % et +1,5 %) — interactif écran + statique impression."""
     _chart_counter[0] += 1
     uid = f"cap_{_chart_counter[0]}"
     xs = [a["an"] for a in ann_data]
     y0 = [a["cap0"] for a in ann_data]
     y15 = [a["cap15"] for a in ann_data]
+
+    # ── Version interactive (écran) — Plotly ou Matplotlib
     if HAS_PLOTLY:
         fig = go.Figure()
         fig.add_trace(go.Scatter(x=xs, y=y0, mode="lines+markers", name="0 % (prix stable)",
@@ -903,6 +932,34 @@ def chart_capital_net(ann_data):
         ax.legend(loc="upper left", fontsize=8); ax.grid(axis="y", alpha=.25)
         fig.patch.set_facecolor("white"); ax.set_facecolor("white"); fig.tight_layout()
         st.pyplot(fig, key=uid+"_mpl")
+
+    # ── Version statique pour impression (print-only) — toujours matplotlib
+    _chart_static_capital_net(xs, y0, y15, uid)
+
+
+def _chart_static_capital_net(xs, y0, y15, uid):
+    """Génère une image matplotlib statique base64 pour impression A4."""
+    import base64
+    fig, ax = plt.subplots(figsize=(10, 2.4), dpi=120)
+    ax.plot(xs, y0, "-o", color=COLORS["blue"], lw=1.8, ms=3, label="0 % (prix stable)")
+    ax.plot(xs, y15, "-o", color=COLORS["teal"], lw=1.8, ms=3, label="+1,5 %/an")
+    for vx, lbl, vc in [(9, "9 ans", COLORS["blue"]), (15, "15 ans", COLORS["teal"]), (25, "25 ans", COLORS["ora"])]:
+        ax.axvline(vx, ls="--", color=vc, alpha=.4, lw=.8)
+        ax.text(vx, ax.get_ylim()[1] * 0.95, lbl, ha="center", fontsize=7, color=vc)
+    ax.axhline(0, ls="--", color="#ddd", lw=.8)
+    ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
+    ax.set_xticks(range(1, 26, 2)); ax.set_xlabel("Année", fontsize=8); ax.set_ylabel("€", fontsize=8)
+    ax.tick_params(labelsize=7)
+    ax.legend(loc="upper left", fontsize=7); ax.grid(axis="y", alpha=.2)
+    fig.patch.set_facecolor("white"); ax.set_facecolor("white"); fig.tight_layout(pad=.5)
+    buf = io.BytesIO()
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)
+    plt.close(fig)
+    buf.seek(0)
+    b64 = base64.b64encode(buf.read()).decode()
+    st.markdown(f'<div class="print-only"><img src="data:image/png;base64,{b64}" '
+                f'style="width:100%;max-height:170px;display:block;margin:0 auto" /></div>',
+                unsafe_allow_html=True)
 
 
 def chart_amort_pret(amttab_data, mempr_val, ta_val):
