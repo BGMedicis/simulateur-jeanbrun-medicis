@@ -805,8 +805,10 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section">🏘️ REVENUS LOCATIFS</div>', unsafe_allow_html=True)
     type_loyer = st.selectbox("Type de loyer", ["Loyer intermédiaire", "Loyer social", "Loyer très social"])
     ls         = st.number_input("Loyer souhaité (€/mois)", min_value=0, max_value=5_000, value=None, step=10, format="%d", placeholder="Ex : 750")
-    il         = st.number_input("Indexation loyers (%/an)", 0.0, 5.0, 1.5, 0.1, format="%.1f") / 100
-    cp         = st.number_input("Charges + TF (% loyers bruts)", 0.0, 60.0, 30.0, 1.0, format="%.0f") / 100
+    il         = st.number_input("Indexation loyers (%/an)", 0.0, 1.5, 1.5, 0.1, format="%.1f",
+                                   help="Plafonnée à 1,5 %/an (hypothèse prudente)") / 100
+    cp         = st.number_input("Charges + TF (% loyers bruts)", 30.0, 60.0, 30.0, 1.0, format="%.0f",
+                                   help="Minimum 30 % — inclut gestion, GLI, TF, PNO, menus travaux") / 100
     duree_amort = st.number_input("Durée amortissement JB (ans)", 1, 25, 25, 1,
                                    help="25 ans = modèle Excel V9. Engagement initial = 9 ans.")
 
@@ -1235,112 +1237,72 @@ with t2:
 # ─────────────────────────────────────────────────────────────────
 with t3:
     st.markdown('<div class="sec">PROJECTION FINANCIÈRE — DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
-    st.caption("Simulation personnalisée • Document non contractuel")
 
-    # ── En-tête 4 blocs (rows 4-12 Excel)
-    c3a, c3b = st.columns(2)
-    with c3a:
-        st.markdown('<div class="sec blue sm">SITUATION DU FOYER</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| | |
-|---|---|
-| Revenus déclarés (avant abatt.) | **{fe(rev)}** |
-| Impôt avant opération | **{fe(res["tot_ref"])}** |
-| Impôt après opération (an 1) | **{fe(ann[0]["tot_ap"])}** |
-| Nombre de parts | **{fn(parts,1)}** |
-| TMI | **{fp(res["tmi_v"])}** |
-| Économie fiscale an 1 | **{fe(res["eco1"])}** |
-""")
-        st.markdown('<div class="sec blue sm">FINANCEMENT</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| | |
-|---|---|
-| Apport personnel | **{fe(apport)}** |
-| Montant emprunté | **{fe(res["mempr"])}** |
-| Taux nominal | **{fp(ti)}** |
-| Mensualité totale | **{fe(res["mens_tot"])}** |
-""")
-    with c3b:
-        st.markdown('<div class="sec teal sm">OPÉRATION IMMOBILIÈRE</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| | |
-|---|---|
-| Prix d'acquisition | **{fe(prix)}** |
-| Zone | **{zone}** |
-| Surface pondérée | **{fn(res['sp'],1)} m²** |
-| Type de loyer | **{type_loyer}** |
-| Loyer mensuel initial | **{fe(res["lmens"])}** |
-""")
-        st.markdown('<div class="sec teal sm">DISPOSITIF JEANBRUN</div>', unsafe_allow_html=True)
-        st.markdown(f"""
-| | |
-|---|---|
-| Base amortissable (80%) | **{fe(res["base_a"])}** |
-| Amortissement annuel | **{fe(res["amort_an"])}** |
-| Plafond annuel | **{fe(PLAF_AMT[type_loyer])}** |
-| Charges exploitation | **{fp(cp)}** |
-""")
+    # ── En-tête compact : 1 seule bande de KPIs (HTML)
+    st.markdown(f"""<div style="display:flex;flex-wrap:wrap;gap:.4rem .6rem;margin:.3rem 0 .6rem;font-size:.72rem">
+      <div style="background:#EEF2FB;border-left:3px solid #3761AD;border-radius:4px;padding:.3rem .55rem;flex:1;min-width:110px">
+        <span style="color:#888">Revenus</span> <b style="color:#14415C">{fe(rev)}</b> · <span style="color:#888">TMI</span> <b style="color:#14415C">{fp(res['tmi_v'])}</b> · <span style="color:#888">Parts</span> <b style="color:#14415C">{fn(parts,1)}</b></div>
+      <div style="background:#E4F5F5;border-left:3px solid #009FA3;border-radius:4px;padding:.3rem .55rem;flex:1;min-width:110px">
+        <span style="color:#888">Prix</span> <b style="color:#14415C">{fe(prix)}</b> · <span style="color:#888">Zone</span> <b style="color:#14415C">{zone}</b> · <span style="color:#888">Loyer</span> <b style="color:#14415C">{fe(res['lmens'])}/m</b></div>
+      <div style="background:#FEF0EC;border-left:3px solid #EA653D;border-radius:4px;padding:.3rem .55rem;flex:1;min-width:110px">
+        <span style="color:#888">Empr.</span> <b style="color:#14415C">{fe(res['mempr'])}</b> · <span style="color:#888">Mens.</span> <b style="color:#14415C">{fe(res['mens_tot'])}</b> · <span style="color:#888">Apport</span> <b style="color:#14415C">{fe(apport_v)}</b></div>
+      <div style="background:#E3EAF0;border-left:3px solid #14415C;border-radius:4px;padding:.3rem .55rem;flex:1;min-width:110px">
+        <span style="color:#888">Amt.</span> <b style="color:#14415C">{fe(res['amort_an'])}/an</b> · <span style="color:#888">Base</span> <b style="color:#14415C">{fe(res['base_a'])}</b> · <span style="color:#888">Éco.an1</span> <b style="color:#009FA3">{fe(res['eco1'])}</b></div>
+    </div>""", unsafe_allow_html=True)
 
-    # ── Tableau 25 ans (rows 14-41 Excel — colonnes identiques)
-    st.markdown('<div class="sec ora">PROJECTION ANNUELLE</div>', unsafe_allow_html=True)
-    rows3 = []
-    for a in ann:
-        rows3.append({
-            "Année": a["an"],
-            "Loyers perçus": round(a["lo"], 0),
-            "Rembours. prêt": round(a["remb"], 0),
-            "Charges exploit.": round(a["ch"], 0),
-            "Amort. Jeanbrun": round(a["amort_yr"], 0),
-            "Revenu foncier net imputé": round(a["rfn"] + a["ded"], 0),
-            "Impôt avant": round(a["ir_av"] + a["ps_av"], 0),
-            "Impôt après": round(a["ir_ap"] + a["ps_ap"], 0),
-            "Économie fiscale": round(a["eco"], 0),
-            "Effort invest. mensuel": round(a["effort"], 0),
-            "Capital net (0%)": round(a["cap0"], 0),
-            "Capital net (1,5%)": round(a["cap15"], 0),
-            "Amt restant": round(res["base_a"] - a["amt_cum"], 0),
-        })
-    df_det = pd.DataFrame(rows3)
-    totals3 = {"Année": "TOTAL",
-               "Loyers perçus": round(sum(a["lo"] for a in ann), 0),
-               "Rembours. prêt": round(sum(a["remb"] for a in ann), 0),
-               "Charges exploit.": round(sum(a["ch"] for a in ann), 0),
-               "Amort. Jeanbrun": round(sum(a["amort_yr"] for a in ann), 0),
-               "Économie fiscale": round(sum(a["eco"] for a in ann), 0)}
-    df_show = pd.concat([df_det, pd.DataFrame([totals3])], ignore_index=True)
-    st.dataframe(df_show, hide_index=True, use_container_width=True, height=580)
+    # ── Tableau 25 ans — HTML pur, compact, alternance couleurs, format €
+    st.markdown('<div class="sec ora" style="margin-top:0">PROJECTION ANNUELLE — 25 ANS</div>', unsafe_allow_html=True)
 
-    # ── Graphique capital net (= le chart Excel de cette feuille)
+    det_cols = ["An", "Loyers", "Remb. prêt", "Charges", "Amt. JB", "RF net imp.", "Impôt av.", "Impôt ap.", "Éco. fisc.", "Effort/m", "Cap. 0%", "Cap. 1,5%", "Amt. rest."]
+    ths_det = "".join(f'<th style="padding:.22rem .3rem;white-space:nowrap">{c}</th>' for c in det_cols)
+
+    rows_det_html = ""
+    for i, a in enumerate(ann):
+        bg_row = "#f7f9fc" if i % 2 == 0 else "#ffffff"
+        # Highlight years 9, 15, 25
+        if a["an"] == 9:
+            bg_row = "#dce6f7"
+        elif a["an"] == 15:
+            bg_row = "#d4efef"
+        elif a["an"] == 25:
+            bg_row = "#fde3da"
+        vals = [
+            a["an"],
+            fe(a["lo"]), fe(a["remb"]), fe(a["ch"]), fe(a["amort_yr"]),
+            fe(a["rfn"] + a["ded"]),
+            fe(a["ir_av"] + a["ps_av"]), fe(a["ir_ap"] + a["ps_ap"]),
+            fe(a["eco"]), fe(a["effort"]),
+            fe(a["cap0"]), fe(a["cap15"]),
+            fe(res["base_a"] - a["amt_cum"]),
+        ]
+        tds = f'<td style="padding:.2rem .3rem;font-weight:700;text-align:center">{vals[0]}</td>'
+        tds += "".join(f'<td style="padding:.2rem .3rem;text-align:right;white-space:nowrap">{v}</td>' for v in vals[1:])
+        rows_det_html += f'<tr style="background:{bg_row}">{tds}</tr>\n'
+
+    # TOTAL row
+    tot_vals = [
+        "TOT",
+        fe(sum(a["lo"] for a in ann)), fe(sum(a["remb"] for a in ann)),
+        fe(sum(a["ch"] for a in ann)), fe(sum(a["amort_yr"] for a in ann)),
+        "", "", "",
+        fe(sum(a["eco"] for a in ann)), "", "", "", "",
+    ]
+    tds_tot = f'<td style="padding:.25rem .3rem;font-weight:800;text-align:center">{tot_vals[0]}</td>'
+    tds_tot += "".join(f'<td style="padding:.25rem .3rem;text-align:right;font-weight:700;white-space:nowrap">{v}</td>' for v in tot_vals[1:])
+    rows_det_html += f'<tr style="background:#14415C;color:#fff;font-weight:700">{tds_tot}</tr>\n'
+
+    det_table_html = f"""<div style="overflow-x:auto">
+    <table style="width:100%;border-collapse:collapse;font-size:.7rem;font-family:Poppins,sans-serif">
+      <thead><tr style="background:#14415C;color:#fff;font-size:.62rem;text-transform:uppercase;letter-spacing:.03em">{ths_det}</tr></thead>
+      <tbody>{rows_det_html}</tbody>
+    </table></div>"""
+    st.markdown(det_table_html, unsafe_allow_html=True)
+
+    # ── Graphique capital net
     st.markdown('<div class="sec blue sm no-print">📈 Capital net constitué par année</div>', unsafe_allow_html=True)
     chart_capital_net(ann)
 
-    st.caption("━ Ligne 15 ans = horizon de référence • ━ Ligne 25 ans = fin de crédit")
-    st.caption("Le TRI mesure la rentabilité annualisée si revente à la date indiquée, après impôt PV. "
-               "L'effort d'épargne est le reste à charge mensuel réel après loyers et économie fiscale.")
-
-    # ── Bilan global (row 46 Excel)
-    st.markdown('<div class="sec dark">BILAN GLOBAL DE L\'OPÉRATION</div>', unsafe_allow_html=True)
-    b1, b2 = st.columns(2)
-    with b1:
-        st.markdown(f"""
-| | Valeur |
-|---|---|
-| Total loyers perçus | **{fe(sum(a['lo'] for a in ann))}** |
-| Total remboursements | **{fe(sum(a['remb'] for a in ann))}** |
-| Total charges | **{fe(sum(a['ch'] for a in ann))}** |
-| Total amort. Jeanbrun | **{fe(sum(a['amort_yr'] for a in ann))}** |
-| **Total éco. fiscale** | **{fe(sum(a['eco'] for a in ann))}** |
-""")
-    with b2:
-        tri9 = ann[8]["tri"]; tri15 = ann[14]["tri"]; tri25 = ann[24]["tri"]
-        st.markdown(f"""
-| TRI investisseur (si revente) | |
-|---|---|
-| TRI à 9 ans | **{fp(tri9) if tri9 else '—'}** |
-| TRI à 15 ans | **{fp(tri15) if tri15 else '—'}** |
-| TRI à 25 ans | **{fp(tri25) if tri25 else '—'}** |
-""")
-    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Document de travail interne non contractuel</div>', unsafe_allow_html=True)
+    st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Simulation personnalisée non contractuelle · Hypothèses d\'indexation et fiscalité constantes</div>', unsafe_allow_html=True)
 
 
 
