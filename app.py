@@ -67,6 +67,28 @@ input[type="password"]::-webkit-credentials-auto-fill-button{display:none!import
 [data-testid="stSidebar"]{background:var(--dark)!important}
 [data-testid="stSidebar"] [data-testid="stSidebarContent"]{background:var(--dark)!important}
 
+/* Scrollbar visible dans la sidebar */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"]{
+  overflow-y:auto!important;
+}
+[data-testid="stSidebar"] ::-webkit-scrollbar{width:6px!important;display:block!important}
+[data-testid="stSidebar"] ::-webkit-scrollbar-track{background:rgba(255,255,255,.08)!important;border-radius:3px!important}
+[data-testid="stSidebar"] ::-webkit-scrollbar-thumb{background:rgba(255,255,255,.3)!important;border-radius:3px!important}
+[data-testid="stSidebar"] ::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.5)!important}
+/* Firefox */
+[data-testid="stSidebar"] [data-testid="stSidebarContent"]{
+  scrollbar-width:thin!important;
+  scrollbar-color:rgba(255,255,255,.3) rgba(255,255,255,.08)!important;
+}
+
+/* Compactage vertical pour écrans 13" */
+[data-testid="stSidebar"] .stNumberInput,
+[data-testid="stSidebar"] .stSelectbox,
+[data-testid="stSidebar"] .stTextInput{margin-bottom:-0.45rem!important}
+[data-testid="stSidebar"] label{font-size:.72rem!important;margin-bottom:0!important;padding-bottom:0!important}
+[data-testid="stSidebar"] input{padding:.3rem .5rem!important;font-size:.8rem!important;height:auto!important}
+[data-testid="stSidebar"] [data-baseweb="select"]>div{min-height:unset!important;padding:.15rem .5rem!important}
+
 /* Masquer l'icône keyboard_double_arrow résiduelle */
 [data-testid="stSidebar"] [data-testid="stSidebarCollapseButton"],
 [data-testid="collapsedControl"],
@@ -103,6 +125,13 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
   border-radius:6px!important;
   font-weight:600!important;
 }
+/* Placeholder "Ex:" en lime Médicis */
+[data-testid="stSidebar"] input::placeholder{
+  color:#E2DE3E!important;
+  -webkit-text-fill-color:#E2DE3E!important;
+  opacity:1!important;
+  font-weight:500!important;
+}
 [data-testid="stSidebar"] [data-baseweb="input"],
 [data-testid="stSidebar"] [data-baseweb="base-input"]{
   background:#ffffff!important;
@@ -136,15 +165,15 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
 
 /* ── Section headers dans sidebar (markdown HTML) ── */
 [data-testid="stSidebar"] .sidebar-section{
-  background:rgba(234,101,61,.18)!important;
-  border:1px solid rgba(234,101,61,.35)!important;
+  background:#E2DE3E!important;
+  border:1px solid #E2DE3E!important;
   border-radius:8px!important;
-  padding:.55rem .8rem!important;
-  margin:.6rem 0 .4rem!important;
+  padding:.45rem .7rem!important;
+  margin:.5rem 0 .3rem!important;
   font-weight:700!important;
-  font-size:.82rem!important;
-  color:#EA653D!important;
-  -webkit-text-fill-color:#EA653D!important;
+  font-size:.78rem!important;
+  color:#14415C!important;
+  -webkit-text-fill-color:#14415C!important;
   letter-spacing:.02em;
 }
 
