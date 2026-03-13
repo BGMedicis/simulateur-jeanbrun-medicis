@@ -50,9 +50,19 @@ st.markdown("""<style>
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear{display:none!important}
 input[type="password"]::-webkit-credentials-auto-fill-button{display:none!important}
-[data-testid="stPasswordInput"] button[kind="icon"],
-[data-testid="stPasswordInput"] button[aria-label*="visibility"],
-[data-testid="stPasswordInput"] button{display:none!important}
+/* Streamlit password toggle — toutes versions */
+[data-testid="stPasswordInput"] button,
+[data-testid="stPasswordInput"] [data-testid*="toggle"],
+[data-testid="stPasswordInput"] svg,
+[data-testid="stPasswordInput"] [role="button"],
+[data-baseweb="input"] [data-testid*="assword"] ~ button,
+[data-baseweb="input"] button[tabindex],
+.stTextInput button,
+div:has(> input[type="password"]) button,
+div:has(> input[type="password"]) [role="button"],
+div:has(input[type="password"]) button:not([kind="primary"]):not([data-testid="stBaseButton-primary"]){
+  display:none!important;visibility:hidden!important;width:0!important;height:0!important;overflow:hidden!important;
+}
 
 /* ── Typographie ── */
 *,html,body,[class*="css"],.stApp,button,input,select,textarea
@@ -349,6 +359,24 @@ def check_password():
         </div>""", unsafe_allow_html=True)
         pwd = st.text_input("", type="password", label_visibility="collapsed",
                             placeholder="🔑  Mot de passe conseiller")
+        # Masquer l'œil de révélation du mot de passe via JS
+        components.html("""<script>
+        function hideEye(){
+          const btns = window.parent.document.querySelectorAll(
+            'input[type="password"]'
+          );
+          btns.forEach(inp => {
+            const container = inp.closest('[data-baseweb="input"]') || inp.parentElement;
+            if(container){
+              container.querySelectorAll('button, [role="button"]').forEach(b => {
+                b.style.display='none';
+              });
+            }
+          });
+        }
+        hideEye();
+        const _iv = setInterval(()=>{hideEye(); clearInterval(_iv);}, 500);
+        </script>""", height=0)
         if st.button("Se connecter →", use_container_width=True, type="primary"):
             if pwd == st.secrets.get("password", "jeanbrun2025"):
                 st.session_state.auth = True
