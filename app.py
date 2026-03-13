@@ -359,23 +359,51 @@ def check_password():
         </div>""", unsafe_allow_html=True)
         pwd = st.text_input("", type="password", label_visibility="collapsed",
                             placeholder="🔑  Mot de passe conseiller")
-        # Masquer l'œil de révélation du mot de passe via JS
+        # JS : masquer l'œil + forcer la propagation des events autofill (Dashlane, 1Password, etc.)
         components.html("""<script>
-        function hideEye(){
-          const btns = window.parent.document.querySelectorAll(
-            'input[type="password"]'
-          );
-          btns.forEach(inp => {
-            const container = inp.closest('[data-baseweb="input"]') || inp.parentElement;
-            if(container){
-              container.querySelectorAll('button, [role="button"]').forEach(b => {
-                b.style.display='none';
-              });
+        (function(){
+          const doc = window.parent.document;
+
+          // 1. Masquer l'œil
+          function hideEye(){
+            doc.querySelectorAll('input[type="password"]').forEach(inp => {
+              const c = inp.closest('[data-baseweb="input"]') || inp.parentElement;
+              if(c) c.querySelectorAll('button,[role="button"]').forEach(b => b.style.display='none');
+            });
+          }
+
+          // 2. Forcer la synchro Streamlit après autofill
+          function syncAutofill(){
+            doc.querySelectorAll('input[type="password"]').forEach(inp => {
+              if(inp.value && inp.value.length > 0){
+                // Dispatch les events React attendus par Streamlit
+                const nativeSet = Object.getOwnPropertyDescriptor(
+                  window.parent.HTMLInputElement.prototype, 'value'
+                ).set;
+                nativeSet.call(inp, inp.value);
+                inp.dispatchEvent(new Event('input', {bubbles:true}));
+                inp.dispatchEvent(new Event('change', {bubbles:true}));
+              }
+            });
+          }
+
+          hideEye();
+          // Vérifier toutes les 300ms pendant 5 secondes (temps pour Dashlane de remplir)
+          let checks = 0;
+          const iv = setInterval(()=>{
+            hideEye();
+            syncAutofill();
+            if(++checks > 16) clearInterval(iv);
+          }, 300);
+
+          // Aussi synchro juste avant le click sur le bouton "Se connecter"
+          doc.addEventListener('click', e => {
+            const btn = e.target.closest('button');
+            if(btn && btn.textContent.includes('connecter')){
+              syncAutofill();
             }
-          });
-        }
-        hideEye();
-        const _iv = setInterval(()=>{hideEye(); clearInterval(_iv);}, 500);
+          }, true);
+        })();
         </script>""", height=0)
         if st.button("Se connecter →", use_container_width=True, type="primary"):
             if pwd == st.secrets.get("password", "jeanbrun2025"):
