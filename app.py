@@ -357,55 +357,14 @@ def check_password():
         <p style="color:#999;font-size:.82rem;margin-bottom:1.3rem;">
           Outil réservé aux conseillers</p>
         </div>""", unsafe_allow_html=True)
-        pwd = st.text_input("", type="password", label_visibility="collapsed",
-                            placeholder="🔑  Mot de passe conseiller")
-        # JS : masquer l'œil + forcer la propagation des events autofill (Dashlane, 1Password, etc.)
-        components.html("""<script>
-        (function(){
-          const doc = window.parent.document;
-
-          // 1. Masquer l'œil
-          function hideEye(){
-            doc.querySelectorAll('input[type="password"]').forEach(inp => {
-              const c = inp.closest('[data-baseweb="input"]') || inp.parentElement;
-              if(c) c.querySelectorAll('button,[role="button"]').forEach(b => b.style.display='none');
-            });
-          }
-
-          // 2. Forcer la synchro Streamlit après autofill
-          function syncAutofill(){
-            doc.querySelectorAll('input[type="password"]').forEach(inp => {
-              if(inp.value && inp.value.length > 0){
-                // Dispatch les events React attendus par Streamlit
-                const nativeSet = Object.getOwnPropertyDescriptor(
-                  window.parent.HTMLInputElement.prototype, 'value'
-                ).set;
-                nativeSet.call(inp, inp.value);
-                inp.dispatchEvent(new Event('input', {bubbles:true}));
-                inp.dispatchEvent(new Event('change', {bubbles:true}));
-              }
-            });
-          }
-
-          hideEye();
-          // Vérifier toutes les 300ms pendant 5 secondes (temps pour Dashlane de remplir)
-          let checks = 0;
-          const iv = setInterval(()=>{
-            hideEye();
-            syncAutofill();
-            if(++checks > 16) clearInterval(iv);
-          }, 300);
-
-          // Aussi synchro juste avant le click sur le bouton "Se connecter"
-          doc.addEventListener('click', e => {
-            const btn = e.target.closest('button');
-            if(btn && btn.textContent.includes('connecter')){
-              syncAutofill();
-            }
-          }, true);
-        })();
-        </script>""", height=0)
-        if st.button("Se connecter →", use_container_width=True, type="primary"):
+        # st.form force Streamlit à lire les valeurs au moment du submit
+        # → résout le problème d'autofill Dashlane / 1Password / Chrome
+        with st.form("login_form", clear_on_submit=False):
+            pwd = st.text_input("", type="password", label_visibility="collapsed",
+                                placeholder="🔑  Mot de passe conseiller")
+            submitted = st.form_submit_button("Se connecter →",
+                                               use_container_width=True, type="primary")
+        if submitted:
             if pwd == st.secrets.get("password", "jeanbrun2025"):
                 st.session_state.auth = True
                 st.rerun()
