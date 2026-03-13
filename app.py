@@ -50,17 +50,12 @@ st.markdown("""<style>
 input[type="password"]::-ms-reveal,
 input[type="password"]::-ms-clear{display:none!important}
 input[type="password"]::-webkit-credentials-auto-fill-button{display:none!important}
-/* Streamlit password toggle — toutes versions */
-[data-testid="stPasswordInput"] button,
-[data-testid="stPasswordInput"] [data-testid*="toggle"],
-[data-testid="stPasswordInput"] svg,
-[data-testid="stPasswordInput"] [role="button"],
-[data-baseweb="input"] [data-testid*="assword"] ~ button,
-[data-baseweb="input"] button[tabindex],
-.stTextInput button,
-div:has(> input[type="password"]) button,
-div:has(> input[type="password"]) [role="button"],
-div:has(input[type="password"]) button:not([kind="primary"]):not([data-testid="stBaseButton-primary"]){
+/* Streamlit password toggle — ciblé sur le conteneur input uniquement */
+[data-testid="stPasswordInput"] [data-baseweb="input"] button,
+[data-testid="stPasswordInput"] [data-baseweb="input"] [role="button"],
+[data-testid="stPasswordInput"] [data-baseweb="input"] svg[data-testid],
+[data-baseweb="input"]:has(input[type="password"]) button,
+[data-baseweb="input"]:has(input[type="password"]) [role="button"]{
   display:none!important;visibility:hidden!important;width:0!important;height:0!important;overflow:hidden!important;
 }
 
