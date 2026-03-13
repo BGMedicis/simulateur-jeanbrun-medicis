@@ -46,6 +46,14 @@ st.markdown("""<style>
   --lb:#EEF2FB; --lt:#E4F5F5; --lo:#FEF0EC; --ll:#FAFAD0; --gray:#F4F6F9;
 }
 
+/* ── Masquer l'icône œil du mot de passe ── */
+input[type="password"]::-ms-reveal,
+input[type="password"]::-ms-clear{display:none!important}
+input[type="password"]::-webkit-credentials-auto-fill-button{display:none!important}
+[data-testid="stPasswordInput"] button[kind="icon"],
+[data-testid="stPasswordInput"] button[aria-label*="visibility"],
+[data-testid="stPasswordInput"] button{display:none!important}
+
 /* ── Typographie ── */
 *,html,body,[class*="css"],.stApp,button,input,select,textarea
   {font-family:'Poppins',sans-serif!important}
