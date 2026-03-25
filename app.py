@@ -883,20 +883,19 @@ with st.sidebar:
     nd    = st.number_input("Nb déclarants", 1, 2, 2, 1)
 
     # ── SOUS-MODULE : Évolution des parts par année ──
-    st.markdown('<div style="margin:.4rem 0 .2rem"></div>', unsafe_allow_html=True)
-    with st.expander("Modifier les parts par année", expanded=False):
-        st.markdown('<div style="font-size:.72rem;color:#E2DE3E;margin-bottom:.5rem;line-height:1.4">Par defaut = valeur ci-dessus. Modifier une annee propage la valeur sur toutes les annees suivantes.</div>', unsafe_allow_html=True)
+    show_parts = st.checkbox("Parts differentes selon les annees", value=False, key="show_parts_toggle")
 
-        # Initialiser le session_state si besoin ou si parts globales ont changé
-        if "parts_annuelles" not in st.session_state:
-            st.session_state.parts_annuelles = [float(parts)] * 25
+    # Reset systématique si la valeur globale "parts" a changé — TOUJOURS, case cochée ou non
+    if "parts_global_prev" not in st.session_state:
+        st.session_state.parts_global_prev = float(parts)
+    if "parts_annuelles" not in st.session_state:
+        st.session_state.parts_annuelles = [float(parts)] * 25
+    if st.session_state.parts_global_prev != float(parts):
+        st.session_state.parts_annuelles = [float(parts)] * 25
+        st.session_state.parts_global_prev = float(parts)
 
-        # Si la valeur globale "parts" a changé, réinitialiser tout
-        if "parts_global_prev" not in st.session_state:
-            st.session_state.parts_global_prev = float(parts)
-        if st.session_state.parts_global_prev != float(parts):
-            st.session_state.parts_annuelles = [float(parts)] * 25
-            st.session_state.parts_global_prev = float(parts)
+    if show_parts:
+        st.markdown('<div style="font-size:.72rem;color:#E2DE3E;margin-bottom:.4rem;line-height:1.4">Modifier une annee propage la valeur sur toutes les suivantes.</div>', unsafe_allow_html=True)
 
         parts_par_annee = list(st.session_state.parts_annuelles)
 
@@ -912,19 +911,19 @@ with st.sidebar:
                     key=f"parts_an_{an_idx}",
                     label_visibility="visible"
                 )
-                # Propagation en cascade : si la valeur change, on met à jour toutes les années suivantes
+                # Propagation en cascade
                 if val_p != parts_par_annee[an_idx - 1]:
                     for k in range(an_idx - 1, 25):
                         parts_par_annee[k] = val_p
                     st.session_state.parts_annuelles = parts_par_annee
                     st.rerun()
 
-        # Résumé lisible à l'intérieur de l'expander
+        # Résumé
         nb_changements = sum(1 for i in range(1, 25) if parts_par_annee[i] != parts_par_annee[i-1])
         if nb_changements > 0:
-            st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;font-weight:700;margin-top:.5rem">{nb_changements} changement(s) de parts detecte(s) sur 25 ans</div>', unsafe_allow_html=True)
-        else:
-            st.markdown(f'<div style="background:rgba(255,255,255,.1);color:#fff;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;margin-top:.5rem">Toutes les annees : {fn(parts_par_annee[0], 1)} parts</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;font-weight:700;margin-top:.4rem">{nb_changements} changement(s) sur 25 ans</div>', unsafe_allow_html=True)
+    else:
+        parts_par_annee = list(st.session_state.parts_annuelles)
 
     st.divider()
     go = st.button("🚀 Lancer la simulation", use_container_width=True, type="primary")
