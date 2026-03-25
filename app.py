@@ -884,9 +884,22 @@ with st.sidebar:
 
     # ── SOUS-MODULE : Évolution des parts par année ──
     st.markdown('<div style="margin:.4rem 0 .2rem"></div>', unsafe_allow_html=True)
-    with st.expander("📅 Modifier les parts par année", expanded=False):
-        st.markdown('<div style="font-size:.72rem;color:#E2DE3E;margin-bottom:.5rem;line-height:1.4">⚑ Par défaut = valeur ci-dessus.<br>Modifier pour anticiper arrivée/départ d\'un enfant.</div>', unsafe_allow_html=True)
-        parts_par_annee = []
+    with st.expander("Modifier les parts par année", expanded=False):
+        st.markdown('<div style="font-size:.72rem;color:#E2DE3E;margin-bottom:.5rem;line-height:1.4">Par defaut = valeur ci-dessus. Modifier une annee propage la valeur sur toutes les annees suivantes.</div>', unsafe_allow_html=True)
+
+        # Initialiser le session_state si besoin ou si parts globales ont changé
+        if "parts_annuelles" not in st.session_state:
+            st.session_state.parts_annuelles = [float(parts)] * 25
+
+        # Si la valeur globale "parts" a changé, réinitialiser tout
+        if "parts_global_prev" not in st.session_state:
+            st.session_state.parts_global_prev = float(parts)
+        if st.session_state.parts_global_prev != float(parts):
+            st.session_state.parts_annuelles = [float(parts)] * 25
+            st.session_state.parts_global_prev = float(parts)
+
+        parts_par_annee = list(st.session_state.parts_annuelles)
+
         cols_p = st.columns(2)
         for an_idx in range(1, 26):
             col_p = cols_p[(an_idx - 1) % 2]
@@ -894,17 +907,24 @@ with st.sidebar:
                 val_p = st.number_input(
                     f"An {an_idx}",
                     min_value=1.0, max_value=10.0,
-                    value=float(parts),
+                    value=float(parts_par_annee[an_idx - 1]),
                     step=0.5, format="%.1f",
                     key=f"parts_an_{an_idx}",
                     label_visibility="visible"
                 )
-                parts_par_annee.append(val_p)
+                # Propagation en cascade : si la valeur change, on met à jour toutes les années suivantes
+                if val_p != parts_par_annee[an_idx - 1]:
+                    for k in range(an_idx - 1, 25):
+                        parts_par_annee[k] = val_p
+                    st.session_state.parts_annuelles = parts_par_annee
+                    st.rerun()
 
-    # Résumé des parts si elles varient
-    parts_varies = len(set(parts_par_annee)) > 1 if 'parts_par_annee' in dir() else False
-    if parts_varies:
-        st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.3rem .6rem;font-size:.7rem;font-weight:700;margin-top:.2rem">📅 Parts variables activées</div>', unsafe_allow_html=True)
+        # Résumé lisible à l'intérieur de l'expander
+        nb_changements = sum(1 for i in range(1, 25) if parts_par_annee[i] != parts_par_annee[i-1])
+        if nb_changements > 0:
+            st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;font-weight:700;margin-top:.5rem">{nb_changements} changement(s) de parts detecte(s) sur 25 ans</div>', unsafe_allow_html=True)
+        else:
+            st.markdown(f'<div style="background:rgba(255,255,255,.1);color:#fff;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;margin-top:.5rem">Toutes les annees : {fn(parts_par_annee[0], 1)} parts</div>', unsafe_allow_html=True)
 
     st.divider()
     go = st.button("🚀 Lancer la simulation", use_container_width=True, type="primary")
@@ -922,7 +942,9 @@ ls_v = ls if ls is not None else 0
 rev_v = rev if rev is not None else 0
 
 # Sécuriser parts_par_annee (au cas où l'expander ne serait pas encore instancié)
-if "parts_par_annee" not in dir() or len(parts_par_annee) < 25:
+if "parts_annuelles" in st.session_state and len(st.session_state.parts_annuelles) == 25:
+    parts_par_annee = list(st.session_state.parts_annuelles)
+elif "parts_par_annee" not in dir() or len(parts_par_annee) < 25:
     parts_par_annee = [float(parts)] * 25
 
 if go:
