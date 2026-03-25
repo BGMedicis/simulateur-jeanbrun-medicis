@@ -834,11 +834,11 @@ with st.sidebar:
     st.markdown('<div class="sidebar-section">🏠 BIEN IMMOBILIER</div>', unsafe_allow_html=True)
     prix      = st.number_input("Prix d'acquisition (€)", min_value=0, max_value=5_000_000, value=None, step=1_000, format="%d", placeholder="Ex : 260 000")
     frais_pct = st.number_input("Frais d'acquisition (%)", 0.0, 15.0, 3.0, 0.1, format="%.1f") / 100
-    surf      = st.number_input("Surface habitable (m²)", min_value=0.0, max_value=500.0, value=None, step=0.5, format="%.1f", placeholder="Ex : 40")
+    surf      = st.number_input("Surface habitable (m²)", min_value=0.0, max_value=500.0, value=None, step=0.5, format="%.2f", placeholder="Ex : 40")
     zone      = st.selectbox("Zone Jeanbrun", ["A bis", "A", "B1", "B2", "C"], index=1)
     rdc       = st.selectbox("Rez-de-chaussée ?", ["NON", "OUI"])
-    balcon    = st.number_input("Surface balcon (m²)", 0.0, 200.0, 0.0, 0.5, format="%.1f")
-    terrasse  = st.number_input("Surface terrasse (m²)", 0.0, 300.0, 0.0, 0.5, format="%.1f")
+    balcon    = st.number_input("Surface balcon (m²)", 0.0, 200.0, 0.0, 0.5, format="%.2f")
+    terrasse  = st.number_input("Surface terrasse (m²)", 0.0, 300.0, 0.0, 0.5, format="%.2f")
 
     # ── SECTION 2 : Financement ──
     st.markdown('<div class="sidebar-section">💳 FINANCEMENT</div>', unsafe_allow_html=True)
