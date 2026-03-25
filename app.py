@@ -1,8 +1,14 @@
 # -*- coding: utf-8 -*-
 #
-# Simulateur Jeanbrun V11 — médicis Immobilier Neuf
-# Moteur Python fidèle à 100 % au modèle Excel V9
+# Simulateur Jeanbrun V12 — médicis Immobilier Neuf
+# Moteur Python fidèle à 100 % au modèle Excel V10
 # ─────────────────────────────────────────────────
+# Corrections et ajouts V12 :
+#   ✓ Parts fiscales variables année par année
+#       – Valeur par défaut = parts globales (sidebar)
+#       – Expander sidebar pour personnaliser chaque année
+#       – Intégré dans le moteur (calcul IR/TMI/QF annuel)
+#       – Affiché dans l'onglet Moteur et Synthèse détaillée
 # Corrections et ajouts V11 :
 #   ✓ Sidebar : sections visibles via titres HTML inline (plus d'expander cassé)
 #   ✓ Graphiques : matplotlib natif (fonctionne sans plotly)
@@ -562,10 +568,16 @@ def run(prix, frais_pct, surf, zone, rdc, balcon, terrasse,
         apport, ti, ta, duree, fg,
         type_loyer, ls, il, cp,
         type_rev, rev, rfa, parts, nd,
-        duree_engagement=9):
+        duree_engagement=9,
+        parts_list=None):
 
     frais = prix * frais_pct
     cout = prix + frais
+
+    # Parts fiscales par année (par défaut = valeur globale)
+    if parts_list is None or len(parts_list) < 25:
+        parts_list = [parts] * 25
+    parts_list = list(parts_list)  # assurer mutabilité
 
     # Surface pondérée — art. 2 terdecies D ann. III CGI
     sp = (surf + min(balcon, 16.0) / 2) if rdc == "OUI" else \
@@ -602,6 +614,7 @@ def run(prix, frais_pct, surf, zone, rdc, balcon, terrasse,
 
     for an in range(1, 26):
         i = an - 1
+        parts_an = parts_list[i]  # Parts fiscales pour cette année
 
         # ── Loyers et charges
         lo = lann0 * (1 + il) ** i
@@ -623,10 +636,10 @@ def run(prix, frais_pct, surf, zone, rdc, balcon, terrasse,
 
         # ── AVANT OPÉRATION (variable chaque année via CSG déductible)
         rev_total_avant = rn + rfa - csg_ded_av_prev
-        qf_avant = rev_total_avant / parts if parts > 0 else 0
-        tmi_avant = get_tmi(max(0, rev_total_avant), parts)
-        tx_moy_avant = taux_moyen(max(0, rev_total_avant), parts)
-        ir_avant = calcul_ir(max(0, rev_total_avant), parts)
+        qf_avant = rev_total_avant / parts_an if parts_an > 0 else 0
+        tmi_avant = get_tmi(max(0, rev_total_avant), parts_an)
+        tx_moy_avant = taux_moyen(max(0, rev_total_avant), parts_an)
+        ir_avant = calcul_ir(max(0, rev_total_avant), parts_an)
         ps_avant = max(0.0, rfa) * TAUX_PS
         tot_avant = ir_avant + ps_avant
         csg_ded_av_N = max(0.0, rfa) * CSG_DED
@@ -658,10 +671,10 @@ def run(prix, frais_pct, surf, zone, rdc, balcon, terrasse,
 
         # ── APRÈS OPÉRATION
         rev_ap = rn + rfnt + ded - csg_ded_ap_prev
-        qf_apres = rev_ap / parts if parts > 0 else 0
-        tmi_apres = get_tmi(max(0, rev_ap), parts)
-        tx_moy_apres = taux_moyen(max(0, rev_ap), parts)
-        ir_ap = calcul_ir(max(0.0, rev_ap), parts)
+        qf_apres = rev_ap / parts_an if parts_an > 0 else 0
+        tmi_apres = get_tmi(max(0, rev_ap), parts_an)
+        tx_moy_apres = taux_moyen(max(0, rev_ap), parts_an)
+        ir_ap = calcul_ir(max(0.0, rev_ap), parts_an)
         ps_ap = rfnt * TAUX_PS
         tot_ap = ir_ap + ps_ap
         eco = tot_avant - tot_ap
@@ -717,6 +730,7 @@ def run(prix, frais_pct, surf, zone, rdc, balcon, terrasse,
             an=an, lo=lo, ch=ch, int_a=int_a, ass_a=ass_a_yr,
             amort_yr=amort_yr, amort_an=amort_an, amt_cum=amt_cum,
             crd=crd, vb15=vb15, remb=remb,
+            parts_an=parts_an,
             # Avant opération
             rev_total_avant=rev_total_avant, qf_avant=qf_avant,
             tmi_avant=tmi_avant, tx_moy_avant=tx_moy_avant,
@@ -761,7 +775,7 @@ def run(prix, frais_pct, surf, zone, rdc, balcon, terrasse,
             rfn_sj = a["rf_b"] - a["ch_f"] - a["ch"]
             ded_sj = max(rfn_sj, -PLAFOND_DEF_RG) if rfn_sj < 0 else 0.0
             rfnt_sj = max(0.0, rfn_sj)
-            ir_sj = calcul_ir(max(0.0, rn + rfnt_sj + ded_sj), parts)
+            ir_sj = calcul_ir(max(0.0, rn + rfnt_sj + ded_sj), a["parts_an"])
             ps_sj = rfnt_sj * TAUX_PS
             esj.append(a["tot_av"] - (ir_sj + ps_sj))
         dont_d = sum(esj)
@@ -868,6 +882,30 @@ with st.sidebar:
     parts = st.number_input("Parts fiscales", 1.0, 10.0, 2.5, 0.5, format="%.1f")
     nd    = st.number_input("Nb déclarants", 1, 2, 2, 1)
 
+    # ── SOUS-MODULE : Évolution des parts par année ──
+    st.markdown('<div style="margin:.4rem 0 .2rem"></div>', unsafe_allow_html=True)
+    with st.expander("📅 Modifier les parts par année", expanded=False):
+        st.markdown('<div style="font-size:.72rem;color:#E2DE3E;margin-bottom:.5rem;line-height:1.4">⚑ Par défaut = valeur ci-dessus.<br>Modifier pour anticiper arrivée/départ d\'un enfant.</div>', unsafe_allow_html=True)
+        parts_par_annee = []
+        cols_p = st.columns(2)
+        for an_idx in range(1, 26):
+            col_p = cols_p[(an_idx - 1) % 2]
+            with col_p:
+                val_p = st.number_input(
+                    f"An {an_idx}",
+                    min_value=1.0, max_value=10.0,
+                    value=float(parts),
+                    step=0.5, format="%.1f",
+                    key=f"parts_an_{an_idx}",
+                    label_visibility="visible"
+                )
+                parts_par_annee.append(val_p)
+
+    # Résumé des parts si elles varient
+    parts_varies = len(set(parts_par_annee)) > 1 if 'parts_par_annee' in dir() else False
+    if parts_varies:
+        st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.3rem .6rem;font-size:.7rem;font-weight:700;margin-top:.2rem">📅 Parts variables activées</div>', unsafe_allow_html=True)
+
     st.divider()
     go = st.button("🚀 Lancer la simulation", use_container_width=True, type="primary")
 
@@ -882,6 +920,10 @@ surf_v = surf if surf is not None else 0.0
 apport_v = apport if apport is not None else 0
 ls_v = ls if ls is not None else 0
 rev_v = rev if rev is not None else 0
+
+# Sécuriser parts_par_annee (au cas où l'expander ne serait pas encore instancié)
+if "parts_par_annee" not in dir() or len(parts_par_annee) < 25:
+    parts_par_annee = [float(parts)] * 25
 
 if go:
     # Validation des champs obligatoires
@@ -899,6 +941,7 @@ if go:
                 apport_v, ti, ta, duree, fg,
                 type_loyer, ls_v, il, cp, type_rev, rev_v, rfa, parts, nd,
                 duree_engagement=duree_amort,
+                parts_list=tuple(parts_par_annee),
             )
 res = st.session_state.res
 
@@ -1062,7 +1105,7 @@ with t1:
 
     # ── KPI Cards (row 4-7 Excel)
     kpis = [
-        ("REVENUS DÉCLARÉS", fe(rev), f"{fn(parts,1)} parts fiscales", ""),
+        ("REVENUS DÉCLARÉS", fe(rev), f"{fn(ann[0]['parts_an'],1)} parts (an 1)" + (" · variables" if len(set(a['parts_an'] for a in ann)) > 1 else " · constantes"), ""),
         ("TRANCHE MARGINALE", fp(res["tmi_v"]), "", "t"),
         ("PRIX D'ACQUISITION", fe(prix), f"{type_loyer}", "o"),
         ("LOYER INITIAL", fe(res["lmens"]), "/ mois retenu", "d"),
@@ -1300,7 +1343,22 @@ with t3:
     # ── Tableau 25 ans — HTML pur, compact, alternance couleurs, format €
     st.markdown('<div class="sec ora" style="margin-top:0">PROJECTION ANNUELLE — 25 ANS</div>', unsafe_allow_html=True)
 
-    det_cols = ["An", "Loyers", "Remb. prêt", "Charges", "Amt. JB", "RF net imp.", "Impôt av.", "Impôt ap.", "Éco. fisc.", "Effort/m", "Cap. 0%", "Cap. 1,5%", "Amt. rest."]
+    # ── Bandeau récap parts fiscales (si variables)
+    parts_values = [a["parts_an"] for a in ann]
+    if len(set(parts_values)) > 1:
+        cells_parts = ""
+        prev_p = None
+        for a in ann:
+            p = a["parts_an"]
+            changed = (p != prev_p) and prev_p is not None
+            bg_p = "#E2DE3E" if changed else ("#EEF2FB" if p == parts_values[0] else "#dce6f7")
+            fc_p = "#14415C"
+            border_p = "border:2px solid #3761AD;" if changed else "border:1px solid #c8d5ef;"
+            cells_parts += f'<div style="display:inline-flex;flex-direction:column;align-items:center;min-width:36px;margin:.1rem .1rem;background:{bg_p};{border_p}border-radius:5px;padding:.18rem .25rem"><span style="font-size:.55rem;color:#888;font-weight:600">An{a["an"]}</span><span style="font-size:.8rem;font-weight:800;color:{fc_p}">{fn(p,1)}</span></div>'
+            prev_p = p
+        st.markdown(f'<div style="background:#f4f6fc;border-radius:8px;border-left:4px solid #3761AD;padding:.5rem .7rem;margin-bottom:.5rem"><div style="font-size:.68rem;font-weight:700;color:#3761AD;margin-bottom:.3rem">📅 PARTS FISCALES PAR ANNÉE <span style="font-weight:400;color:#888">(surligné en jaune = changement détecté)</span></div><div style="display:flex;flex-wrap:wrap;gap:0">{cells_parts}</div></div>', unsafe_allow_html=True)
+
+    det_cols = ["An", "Parts", "TMI av.", "Loyers", "Remb. prêt", "Charges", "Amt. JB", "RF net imp.", "Impôt av.", "Impôt ap.", "Éco. fisc.", "Effort/m", "Cap. 0%", "Cap. 1,5%", "Amt. rest."]
     ths_det = "".join(f'<th style="padding:.22rem .3rem;white-space:nowrap">{c}</th>' for c in det_cols)
 
     rows_det_html = ""
@@ -1313,8 +1371,13 @@ with t3:
             bg_row = "#d4efef"
         elif a["an"] == 25:
             bg_row = "#fde3da"
+        # Détecter si les parts ont changé vs année précédente
+        prev_parts = ann[i-1]["parts_an"] if i > 0 else a["parts_an"]
+        parts_changed = a["parts_an"] != prev_parts
+        parts_style = 'font-weight:800;color:#3761AD;background:#dce6f7' if parts_changed else 'font-weight:600'
         vals = [
             a["an"],
+            fn(a["parts_an"], 1), fp(a["tmi_avant"]),
             fe(a["lo"]), fe(a["remb"]), fe(a["ch"]), fe(a["amort_yr"]),
             fe(a["rfn"] + a["ded"]),
             fe(a["ir_av"] + a["ps_av"]), fe(a["ir_ap"] + a["ps_ap"]),
@@ -1323,12 +1386,14 @@ with t3:
             fe(res["base_a"] - a["amt_cum"]),
         ]
         tds = f'<td style="padding:.2rem .3rem;font-weight:700;text-align:center">{vals[0]}</td>'
-        tds += "".join(f'<td style="padding:.2rem .3rem;text-align:right;white-space:nowrap">{v}</td>' for v in vals[1:])
+        tds += f'<td style="padding:.2rem .3rem;text-align:center;{parts_style}">{vals[1]}</td>'
+        tds += f'<td style="padding:.2rem .3rem;text-align:center">{vals[2]}</td>'
+        tds += "".join(f'<td style="padding:.2rem .3rem;text-align:right;white-space:nowrap">{v}</td>' for v in vals[3:])
         rows_det_html += f'<tr style="background:{bg_row}">{tds}</tr>\n'
 
     # TOTAL row
     tot_vals = [
-        "TOT",
+        "TOT", "", "",
         fe(sum(a["lo"] for a in ann)), fe(sum(a["remb"] for a in ann)),
         fe(sum(a["ch"] for a in ann)), fe(sum(a["amort_yr"] for a in ann)),
         "", "", "",
@@ -1428,7 +1493,7 @@ with t5:
     st.markdown('<div class="sec">⚙️ MOTEUR — Données brutes · Colonnes Excel V9</div>', unsafe_allow_html=True)
 
     # Construire le HTML du tableau avec alternance
-    header_cols = ["An","Loyers","Charges","Intérêts","Assur.","Amt.JB","CRD",
+    header_cols = ["An","Parts","TMI av.","TMI ap.","Loyers","Charges","Intérêts","Assur.","Amt.JB","CRD",
         "RF aut.","Tot.av.","IR av.","PS av.",
         "RF bruts","Ch.fin.","Ch.nf","RF net","Déd.RG","Déf.gén","Stock d.","Déf.imp","RF tax.",
         "Rev.ap.","IR ap.","PS ap.","Éco.","Enrich.",
@@ -1445,7 +1510,8 @@ with t5:
     for a in ann:
         tri_str = fp(a["tri"]) if a["tri"] is not None else "—"
         vals = [
-            a["an"], fmt(a["lo"],0), fmt(a["ch"],0), fmt(a["int_a"],0), fmt(a["ass_a"],0),
+            a["an"], fn(a["parts_an"],1), fp(a["tmi_avant"]), fp(a["tmi_apres"]),
+            fmt(a["lo"],0), fmt(a["ch"],0), fmt(a["int_a"],0), fmt(a["ass_a"],0),
             fmt(a["amort_yr"],0), fmt(a["crd"],0),
             fmt(rfa,0), fmt(a["tot_av"],0), fmt(a["ir_av"],0), fmt(a["ps_av"],0),
             fmt(a["rf_b"],0), fmt(a["ch_f"],0), fmt(a["ch_nf"],0), fmt(a["rfn"],0),
