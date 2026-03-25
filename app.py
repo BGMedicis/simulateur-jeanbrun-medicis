@@ -899,11 +899,31 @@ with st.sidebar:
 
         parts_par_annee = list(st.session_state.parts_annuelles)
 
+        # Lire d'abord toutes les valeurs actuelles des widgets
+        for an_idx in range(1, 26):
+            key = f"parts_an_{an_idx}"
+            if key in st.session_state:
+                parts_par_annee[an_idx - 1] = st.session_state[key]
+
+        # Détecter le premier changement et propager
+        for an_idx in range(1, 26):
+            key = f"parts_an_{an_idx}"
+            if key in st.session_state:
+                val_widget = st.session_state[key]
+                val_stored = st.session_state.parts_annuelles[an_idx - 1]
+                if val_widget != val_stored:
+                    # Propager à toutes les années suivantes dans parts_annuelles
+                    for k in range(an_idx - 1, 25):
+                        st.session_state.parts_annuelles[k] = val_widget
+                    break  # un seul changement par cycle
+
+        parts_par_annee = list(st.session_state.parts_annuelles)
+
         cols_p = st.columns(2)
         for an_idx in range(1, 26):
             col_p = cols_p[(an_idx - 1) % 2]
             with col_p:
-                val_p = st.number_input(
+                st.number_input(
                     f"An {an_idx}",
                     min_value=1.0, max_value=10.0,
                     value=float(parts_par_annee[an_idx - 1]),
@@ -911,20 +931,14 @@ with st.sidebar:
                     key=f"parts_an_{an_idx}",
                     label_visibility="visible"
                 )
-                # Propagation en cascade
-                if val_p != parts_par_annee[an_idx - 1]:
-                    for k in range(an_idx - 1, 25):
-                        parts_par_annee[k] = val_p
-                        st.session_state[f"parts_an_{k + 1}"] = val_p
-                    st.session_state.parts_annuelles = parts_par_annee
-                    st.rerun()
 
         # Résumé
         nb_changements = sum(1 for i in range(1, 25) if parts_par_annee[i] != parts_par_annee[i-1])
         if nb_changements > 0:
             st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;font-weight:700;margin-top:.4rem">{nb_changements} changement(s) sur 25 ans</div>', unsafe_allow_html=True)
     else:
-        parts_par_annee = list(st.session_state.parts_annuelles)
+        parts_par_annee = [float(parts)] * 25
+        st.session_state.parts_annuelles = [float(parts)] * 25
 
     st.divider()
     go = st.button("🚀 Lancer la simulation", use_container_width=True, type="primary")
