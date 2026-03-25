@@ -915,6 +915,7 @@ with st.sidebar:
                 if val_p != parts_par_annee[an_idx - 1]:
                     for k in range(an_idx - 1, 25):
                         parts_par_annee[k] = val_p
+                        st.session_state[f"parts_an_{k + 1}"] = val_p
                     st.session_state.parts_annuelles = parts_par_annee
                     st.rerun()
 
