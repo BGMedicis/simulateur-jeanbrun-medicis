@@ -885,40 +885,33 @@ with st.sidebar:
     # ── SOUS-MODULE : Évolution des parts par année ──
     show_parts = st.checkbox("Parts differentes selon les annees", value=False, key="show_parts_toggle")
 
-    # Reset systématique si la valeur globale "parts" a changé — TOUJOURS, case cochée ou non
+    # Initialisation session_state — TOUJOURS exécuté
     if "parts_global_prev" not in st.session_state:
         st.session_state.parts_global_prev = float(parts)
     if "parts_annuelles" not in st.session_state:
         st.session_state.parts_annuelles = [float(parts)] * 25
+    if "parts_render_key" not in st.session_state:
+        st.session_state.parts_render_key = 0
+
+    # Si la valeur globale "parts" a changé → tout réinitialiser
     if st.session_state.parts_global_prev != float(parts):
         st.session_state.parts_annuelles = [float(parts)] * 25
         st.session_state.parts_global_prev = float(parts)
+        st.session_state.parts_render_key += 1
 
     if show_parts:
         st.markdown('<div style="font-size:.72rem;color:#E2DE3E;margin-bottom:.4rem;line-height:1.4">Modifier une annee propage la valeur sur toutes les suivantes.</div>', unsafe_allow_html=True)
 
-        parts_par_annee = list(st.session_state.parts_annuelles)
+        # Callback appelé quand un champ change
+        def make_on_change(idx):
+            def _cb():
+                new_val = st.session_state[f"_pan_{idx}_{st.session_state.parts_render_key}"]
+                for k in range(idx - 1, 25):
+                    st.session_state.parts_annuelles[k] = new_val
+                st.session_state.parts_render_key += 1
+            return _cb
 
-        # Lire d'abord toutes les valeurs actuelles des widgets
-        for an_idx in range(1, 26):
-            key = f"parts_an_{an_idx}"
-            if key in st.session_state:
-                parts_par_annee[an_idx - 1] = st.session_state[key]
-
-        # Détecter le premier changement et propager
-        for an_idx in range(1, 26):
-            key = f"parts_an_{an_idx}"
-            if key in st.session_state:
-                val_widget = st.session_state[key]
-                val_stored = st.session_state.parts_annuelles[an_idx - 1]
-                if val_widget != val_stored:
-                    # Propager à toutes les années suivantes dans parts_annuelles
-                    for k in range(an_idx - 1, 25):
-                        st.session_state.parts_annuelles[k] = val_widget
-                    break  # un seul changement par cycle
-
-        parts_par_annee = list(st.session_state.parts_annuelles)
-
+        rk = st.session_state.parts_render_key
         cols_p = st.columns(2)
         for an_idx in range(1, 26):
             col_p = cols_p[(an_idx - 1) % 2]
@@ -926,11 +919,14 @@ with st.sidebar:
                 st.number_input(
                     f"An {an_idx}",
                     min_value=1.0, max_value=10.0,
-                    value=float(parts_par_annee[an_idx - 1]),
+                    value=float(st.session_state.parts_annuelles[an_idx - 1]),
                     step=0.5, format="%.1f",
-                    key=f"parts_an_{an_idx}",
+                    key=f"_pan_{an_idx}_{rk}",
+                    on_change=make_on_change(an_idx),
                     label_visibility="visible"
                 )
+
+        parts_par_annee = list(st.session_state.parts_annuelles)
 
         # Résumé
         nb_changements = sum(1 for i in range(1, 25) if parts_par_annee[i] != parts_par_annee[i-1])
