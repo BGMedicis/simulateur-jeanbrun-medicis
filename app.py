@@ -931,7 +931,7 @@ with st.sidebar:
         # Résumé
         nb_changements = sum(1 for i in range(1, 25) if parts_par_annee[i] != parts_par_annee[i-1])
         if nb_changements > 0:
-            st.markdown(f'<div style="background:#E2DE3E;color:#14415C;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;font-weight:700;margin-top:.4rem">{nb_changements} changement(s) sur 25 ans</div>', unsafe_allow_html=True)
+            st.markdown(f'<div style="background:#E2DE3E;color:#3761AD;border-radius:6px;padding:.35rem .6rem;font-size:.72rem;font-weight:700;margin-top:.4rem">{nb_changements} changement(s) sur 25 ans</div>', unsafe_allow_html=True)
     else:
         parts_par_annee = [float(parts)] * 25
         st.session_state.parts_annuelles = [float(parts)] * 25
@@ -1390,26 +1390,21 @@ with t3:
             prev_p = p
         st.markdown(f'<div style="background:#f4f6fc;border-radius:8px;border-left:4px solid #3761AD;padding:.5rem .7rem;margin-bottom:.5rem"><div style="font-size:.68rem;font-weight:700;color:#3761AD;margin-bottom:.3rem">📅 PARTS FISCALES PAR ANNÉE <span style="font-weight:400;color:#888">(surligné en jaune = changement détecté)</span></div><div style="display:flex;flex-wrap:wrap;gap:0">{cells_parts}</div></div>', unsafe_allow_html=True)
 
-    det_cols = ["An", "Parts", "TMI av.", "Loyers", "Remb. prêt", "Charges", "Amt. JB", "RF net imp.", "Impôt av.", "Impôt ap.", "Éco. fisc.", "Effort/m", "Cap. 0%", "Cap. 1,5%", "Amt. rest."]
+    det_cols = ["An", "TMI av.", "Loyers", "Remb. prêt", "Charges", "Amt. JB", "RF net imp.", "Impôt av.", "Impôt ap.", "Éco. fisc.", "Effort/m", "Cap. 0%", "Cap. 1,5%", "Amt. rest."]
     ths_det = "".join(f'<th style="padding:.22rem .3rem;white-space:nowrap">{c}</th>' for c in det_cols)
 
     rows_det_html = ""
     for i, a in enumerate(ann):
         bg_row = "#f7f9fc" if i % 2 == 0 else "#ffffff"
-        # Highlight years 9, 15, 25
         if a["an"] == 9:
             bg_row = "#dce6f7"
         elif a["an"] == 15:
             bg_row = "#d4efef"
         elif a["an"] == 25:
             bg_row = "#fde3da"
-        # Détecter si les parts ont changé vs année précédente
-        prev_parts = ann[i-1]["parts_an"] if i > 0 else a["parts_an"]
-        parts_changed = a["parts_an"] != prev_parts
-        parts_style = 'font-weight:800;color:#3761AD;background:#dce6f7' if parts_changed else 'font-weight:600'
         vals = [
             a["an"],
-            fn(a["parts_an"], 1), fp(a["tmi_avant"]),
+            fp(a["tmi_avant"]),
             fe(a["lo"]), fe(a["remb"]), fe(a["ch"]), fe(a["amort_yr"]),
             fe(a["rfn"] + a["ded"]),
             fe(a["ir_av"] + a["ps_av"]), fe(a["ir_ap"] + a["ps_ap"]),
@@ -1418,14 +1413,12 @@ with t3:
             fe(res["base_a"] - a["amt_cum"]),
         ]
         tds = f'<td style="padding:.2rem .3rem;font-weight:700;text-align:center">{vals[0]}</td>'
-        tds += f'<td style="padding:.2rem .3rem;text-align:center;{parts_style}">{vals[1]}</td>'
-        tds += f'<td style="padding:.2rem .3rem;text-align:center">{vals[2]}</td>'
-        tds += "".join(f'<td style="padding:.2rem .3rem;text-align:right;white-space:nowrap">{v}</td>' for v in vals[3:])
+        tds += "".join(f'<td style="padding:.2rem .3rem;text-align:right;white-space:nowrap">{v}</td>' for v in vals[1:])
         rows_det_html += f'<tr style="background:{bg_row}">{tds}</tr>\n'
 
     # TOTAL row
     tot_vals = [
-        "TOT", "", "",
+        "TOT", "",
         fe(sum(a["lo"] for a in ann)), fe(sum(a["remb"] for a in ann)),
         fe(sum(a["ch"] for a in ann)), fe(sum(a["amort_yr"] for a in ann)),
         "", "", "",
