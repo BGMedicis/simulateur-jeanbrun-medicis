@@ -347,11 +347,19 @@ button[kind="headerNoPadding"] span{color:transparent!important;-webkit-text-fil
   table{font-size:.62rem!important}
   td,th{padding:.12rem .2rem!important}
 
-  /* Graphiques : Plotly (screen-only) masqué, matplotlib (print-only) affiché */
-  .screen-only,.stPlotlyChart{display:none!important}
-  .print-only{display:block!important}
-  .stPyplot{max-height:180px!important;overflow:hidden!important}
-  .stPyplot img{max-height:180px!important;width:100%!important}
+  /* Graphiques : Plotly (screen-only) masqué ET conteneur réduit à zéro */
+  .screen-only,.stPlotlyChart{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
+  .element-container:has(.stPlotlyChart){height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
+  /* Matplotlib interactif (écran) masqué aussi */
+  .stPyplot{display:none!important;height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
+  .element-container:has(.stPyplot){height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
+  /* Image statique print-only : visible et GRANDE */
+  .print-only{display:block!important;margin:.15rem 0!important}
+  .print-only img{width:100%!important;max-height:260px!important;height:auto!important;object-fit:contain!important}
+  /* Pédagogie : réduire le parent column aussi */
+  .element-container:has(.ped){display:none!important}
+  /* no-print containers : réduire à zéro pour éviter vide résiduel */
+  .element-container:has(.no-print){height:0!important;max-height:0!important;overflow:hidden!important;margin:0!important;padding:0!important}
 
   /* Couleurs préservées */
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
@@ -461,8 +469,17 @@ def calcul_ir(rev, parts):
 
 
 def get_tmi(rev, parts):
-    """Tranche marginale d'imposition."""
-    qf = rev / parts if parts > 0 else 0
+    """Tranche marginale d'imposition effective (après plafonnement QF)."""
+    if rev <= 0 or parts <= 0:
+        return 0.0
+    pr = 2.0 if parts >= 2.0 else 1.0
+    ds = max(0.0, (parts - pr) * 2)
+    # Vérifier si le plafonnement du quotient familial s'applique
+    it = ir_brut(rev / parts) * parts
+    ir_ref = ir_brut(rev / pr) * pr
+    plafonne = (ir_ref - it) > (ds * PLAFOND_QF)
+    # Si plafonné → TMI basée sur les parts de référence
+    qf = rev / pr if plafonne else rev / parts
     for inf, sup, tx in BAREME:
         if qf <= sup:
             return tx
@@ -1064,25 +1081,25 @@ def chart_capital_net(ann_data):
 def _chart_static_capital_net(xs, y0, y15, uid):
     """Génère une image matplotlib statique base64 pour impression A4."""
     import base64
-    fig, ax = plt.subplots(figsize=(10, 2.4), dpi=120)
-    ax.plot(xs, y0, "-o", color=COLORS["blue"], lw=1.8, ms=3, label="0 % (prix stable)")
-    ax.plot(xs, y15, "-o", color=COLORS["teal"], lw=1.8, ms=3, label="+1,5 %/an")
+    fig, ax = plt.subplots(figsize=(10, 3.8), dpi=150)
+    ax.plot(xs, y0, "-o", color=COLORS["blue"], lw=2.2, ms=4, label="0 % (prix stable)")
+    ax.plot(xs, y15, "-o", color=COLORS["teal"], lw=2.2, ms=4, label="+1,5 %/an")
     for vx, lbl, vc in [(9, "9 ans", COLORS["blue"]), (15, "15 ans", COLORS["teal"]), (25, "25 ans", COLORS["ora"])]:
         ax.axvline(vx, ls="--", color=vc, alpha=.4, lw=.8)
-        ax.text(vx, ax.get_ylim()[1] * 0.95, lbl, ha="center", fontsize=7, color=vc)
+        ax.text(vx, ax.get_ylim()[1] * 0.95, lbl, ha="center", fontsize=8, color=vc, fontweight="bold")
     ax.axhline(0, ls="--", color="#ddd", lw=.8)
     ax.yaxis.set_major_formatter(mticker.FuncFormatter(lambda x, _: f"{x:,.0f}".replace(",", "\u202f")))
-    ax.set_xticks(range(1, 26, 2)); ax.set_xlabel("Année", fontsize=8); ax.set_ylabel("€", fontsize=8)
-    ax.tick_params(labelsize=7)
-    ax.legend(loc="upper left", fontsize=7); ax.grid(axis="y", alpha=.2)
+    ax.set_xticks(range(1, 26, 2)); ax.set_xlabel("Année", fontsize=9); ax.set_ylabel("€", fontsize=9)
+    ax.tick_params(labelsize=8)
+    ax.legend(loc="upper left", fontsize=8, framealpha=.9); ax.grid(axis="y", alpha=.2)
     fig.patch.set_facecolor("white"); ax.set_facecolor("white"); fig.tight_layout(pad=.5)
     buf = io.BytesIO()
-    fig.savefig(buf, format="png", bbox_inches="tight", dpi=120)
+    fig.savefig(buf, format="png", bbox_inches="tight", dpi=150)
     plt.close(fig)
     buf.seek(0)
     b64 = base64.b64encode(buf.read()).decode()
     st.markdown(f'<div class="print-only"><img src="data:image/png;base64,{b64}" '
-                f'style="width:100%;max-height:170px;display:block;margin:0 auto" /></div>',
+                f'style="width:100%;display:block;margin:.2rem auto" /></div>',
                 unsafe_allow_html=True)
 
 
@@ -1224,6 +1241,7 @@ with t1:
 
     # ── Graphique interactif capital net (rows 23-38 Excel = chart)
     st.markdown('<div class="sec no-print">📈 Capital net constitué par année de détention (Valeur revente − CRD − impôt PV) · 0% et 1,5%</div>', unsafe_allow_html=True)
+    st.markdown('<div class="print-only" style="display:none"><div class="sec" style="padding:.2rem .5rem;margin:.15rem 0 .1rem;font-size:.62rem">📈 Capital net par année de détention · 0% et +1,5%/an</div></div>', unsafe_allow_html=True)
     chart_capital_net(ann)
 
     # ── Pédagogie (rows 39-40 Excel)
@@ -1437,6 +1455,7 @@ with t3:
 
     # ── Graphique capital net
     st.markdown('<div class="sec blue sm no-print">📈 Capital net constitué par année</div>', unsafe_allow_html=True)
+    st.markdown('<div class="print-only" style="display:none"><div class="sec blue sm" style="padding:.15rem .5rem;margin:.1rem 0 .05rem;font-size:.58rem">📈 Capital net par année · 0% et +1,5%/an</div></div>', unsafe_allow_html=True)
     chart_capital_net(ann)
 
     st.markdown('<div class="footer"><b>médicis Immobilier Neuf</b> · Simulation personnalisée non contractuelle · Hypothèses d\'indexation et fiscalité constantes</div>', unsafe_allow_html=True)
