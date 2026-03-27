@@ -434,11 +434,11 @@ BAREME = [
 ]
 
 PLAFONDS_LOYERS = {
-    "A bis": {"Loyer intermédiaire": 19.51, "Loyer social": 15.61, "Loyer très social": 11.71},
-    "A":     {"Loyer intermédiaire": 14.49, "Loyer social": 11.59, "Loyer très social":  8.69},
-    "B1":    {"Loyer intermédiaire": 11.68, "Loyer social":  9.34, "Loyer très social":  7.01},
-    "B2":    {"Loyer intermédiaire": 10.15, "Loyer social":  8.12, "Loyer très social":  6.09},
-    "C":     {"Loyer intermédiaire": 10.15, "Loyer social":  8.12, "Loyer très social":  6.09},
+    "A bis": {"Loyer intermédiaire": 19.71, "Loyer social": 15.61, "Loyer très social": 11.71},
+    "A":     {"Loyer intermédiaire": 14.64, "Loyer social": 11.59, "Loyer très social":  8.69},
+    "B1":    {"Loyer intermédiaire": 11.80, "Loyer social":  9.34, "Loyer très social":  7.01},
+    "B2":    {"Loyer intermédiaire": 10.26, "Loyer social":  8.12, "Loyer très social":  6.09},
+    "C":     {"Loyer intermédiaire": 10.26, "Loyer social":  8.12, "Loyer très social":  6.09},
 }
 PLAF_AMT = {"Loyer intermédiaire": 8000, "Loyer social": 10000, "Loyer très social": 12000}
 TAUX_AMT = {"Loyer intermédiaire": 0.035, "Loyer social": 0.045, "Loyer très social": 0.055}
@@ -1712,10 +1712,10 @@ with t7:
     st.markdown('<div class="sec">PLAFONDS DE LOYERS JEANBRUN (€/m²/mois)</div>', unsafe_allow_html=True)
 
     st.dataframe(pd.DataFrame([
-        {"Zone": "A bis", "Loyer intermédiaire": 19.51, "Loyer social": 15.61, "Loyer très social": 11.71},
-        {"Zone": "A",     "Loyer intermédiaire": 14.49, "Loyer social": 11.59, "Loyer très social":  8.69},
-        {"Zone": "B1",    "Loyer intermédiaire": 11.68, "Loyer social":  9.34, "Loyer très social":  7.01},
-        {"Zone": "B2/C",  "Loyer intermédiaire": 10.15, "Loyer social":  8.12, "Loyer très social":  6.09},
+        {"Zone": "A bis", "Loyer intermédiaire": 19.71, "Loyer social": 15.61, "Loyer très social": 11.71},
+        {"Zone": "A",     "Loyer intermédiaire": 14.64, "Loyer social": 11.59, "Loyer très social":  8.69},
+        {"Zone": "B1",    "Loyer intermédiaire": 11.80, "Loyer social":  9.34, "Loyer très social":  7.01},
+        {"Zone": "B2/C",  "Loyer intermédiaire": 10.26, "Loyer social":  8.12, "Loyer très social":  6.09},
     ]), hide_index=True, use_container_width=True)
 
     st.markdown(f"""
